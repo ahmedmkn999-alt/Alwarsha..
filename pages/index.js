@@ -1,6 +1,6 @@
-import { useEffect, useState } from 'react';
+import { useState, useEffect } from 'react';
 import { auth } from '../firebaseConfig';
-import { onAuthStateChanged } from 'firebase/auth';
+import { onAuthStateChanged } from "firebase/auth";
 import Login from '../components/Login';
 import Dashboard from '../components/Dashboard';
 
@@ -9,23 +9,31 @@ export default function Home() {
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
+    // الكود ده هيشتغل أول ما الموقع يفتح ويشوف هل المستخدم راجع من جوجل ولا لأ
     const unsubscribe = onAuthStateChanged(auth, (currentUser) => {
-      setUser(currentUser);
-      setLoading(false);
+      if (currentUser) {
+        setUser(currentUser); // لو سجل دخول، خزن بياناته
+      } else {
+        setUser(null);
+      }
+      setLoading(false); // وقف التحميل
     });
+
     return () => unsubscribe();
   }, []);
 
+  // شاشة تحميل سريعة ولونها أسود عشان تمشي مع الثيم
   if (loading) return (
-    <div className="h-screen flex items-center justify-center bg-slate-900 text-primary text-2xl font-bold">
-      جاري تحميل الورشة...
+    <div className="flex items-center justify-center h-screen bg-black text-primary font-bold text-xl">
+      جاري التحميل... ⚡
     </div>
   );
 
+  // لو مفيش مستخدم -> اظهر صفحة الدخول
   if (!user) {
-    return <Login onLogin={setUser} />;
+    return <Login />;
   }
 
+  // لو فيه مستخدم -> اظهر لوحة التحكم
   return <Dashboard user={user} />;
-}
-  
+    }
