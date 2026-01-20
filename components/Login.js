@@ -1,83 +1,52 @@
-import { useState, useEffect } from 'react';
 import { auth } from '../firebaseConfig';
-import { RecaptchaVerifier, signInWithPhoneNumber } from "firebase/auth";
+import { GoogleAuthProvider, signInWithPopup } from "firebase/auth";
 import Logo from './Logo';
 
 export default function Login({ onLogin }) {
-  const [phone, setPhone] = useState('');
-  const [code, setCode] = useState('');
-  const [step, setStep] = useState('INPUT_PHONE');
 
-  useEffect(() => {
-    // إعداد Recaptcha مرة واحدة فقط عند تحميل المكون
-    if (!window.recaptchaVerifier) {
-      window.recaptchaVerifier = new RecaptchaVerifier(auth, 'recaptcha-container', {
-        'size': 'invisible'
-      });
-    }
-  }, []);
-
-  const sendOtp = async () => {
-    const appVerifier = window.recaptchaVerifier;
+  const handleGoogleLogin = async () => {
+    const provider = new GoogleAuthProvider();
     try {
-      const formattedPhone = `+20${phone.replace(/^0+/, '')}`; // تنسيق الرقم المصري
-      const confirmationResult = await signInWithPhoneNumber(auth, formattedPhone, appVerifier);
-      window.confirmationResult = confirmationResult;
-      setStep('INPUT_OTP');
-    } catch (error) {
-      console.error("Error sending SMS", error);
-      alert("حدث خطأ في إرسال الكود، تأكد من الرقم");
-    }
-  };
-
-  const verifyOtp = async () => {
-    try {
-      const result = await window.confirmationResult.confirm(code);
+      const result = await signInWithPopup(auth, provider);
+      // الدخول نجح، نرسل بيانات المستخدم للموقع الرئيسي
       onLogin(result.user);
     } catch (error) {
-      console.error("Invalid Code", error);
-      alert("الكود غير صحيح");
+      console.error("Google Error:", error);
+      alert("حدث خطأ أثناء محاولة الدخول بجوجل. يرجى المحاولة مرة أخرى.");
     }
   };
 
   return (
     <div className="flex flex-col items-center justify-center min-h-screen bg-dark text-white p-4" dir="rtl">
-      <div className="bg-slate-800 p-8 rounded-2xl shadow-2xl w-full max-w-md border border-slate-700">
-        <div className="mb-8 text-center">
-          <Logo />
-          <p className="text-gray-400 mt-2">بوابتك لكل قطع الغيار</p>
+      <div className="bg-slate-800 p-8 rounded-2xl shadow-2xl w-full max-w-md border border-slate-700 text-center">
+        
+        {/* اللوجو */}
+        <div className="mb-8 flex justify-center scale-90">
+           <Logo />
         </div>
         
-        {step === 'INPUT_PHONE' ? (
-          <>
-            <label className="block text-sm mb-2 text-gray-300">رقم الهاتف</label>
-            <input 
-              type="tel" 
-              placeholder="010xxxxxxxxx" 
-              className="w-full p-4 mb-4 bg-slate-900 border border-slate-600 rounded-lg text-white focus:border-primary outline-none text-left"
-              dir="ltr"
-              onChange={(e) => setPhone(e.target.value)}
-            />
-            <div id="recaptcha-container"></div>
-            <button onClick={sendOtp} className="w-full bg-primary text-dark py-3 rounded-lg font-bold text-lg hover:bg-amber-600 transition">
-              إرسال كود التحقق
-            </button>
-          </>
-        ) : (
-          <>
-            <label className="block text-sm mb-2 text-gray-300">كود التحقق</label>
-            <input 
-              type="text" 
-              placeholder="xxxxxx" 
-              className="w-full p-4 mb-4 bg-slate-900 border border-slate-600 rounded-lg text-white text-center tracking-widest text-xl outline-none"
-              onChange={(e) => setCode(e.target.value)}
-            />
-            <button onClick={verifyOtp} className="w-full bg-green-600 text-white py-3 rounded-lg font-bold text-lg hover:bg-green-700 transition">
-              دخول الورشة
-            </button>
-          </>
-        )}
+        <h2 className="text-xl font-bold mb-2 text-primary">أهلاً بك في الورشة 🔧</h2>
+        <p className="text-gray-400 mb-8">سجل دخولك وابدأ البيع والشراء فوراً</p>
+
+        {/* زر جوجل الوحيد */}
+        <button 
+          onClick={handleGoogleLogin} 
+          className="w-full bg-white text-slate-900 py-4 rounded-xl font-bold text-lg hover:bg-gray-100 transition-all transform hover:scale-105 shadow-lg flex items-center justify-center gap-3"
+        >
+          <img 
+            src="https://www.gstatic.com/firebasejs/ui/2.0.0/images/auth/google.svg" 
+            alt="Google" 
+            className="w-6 h-6"
+          />
+          تسجيل الدخول باستخدام Google
+        </button>
+
+        <p className="mt-8 text-xs text-gray-500">
+          دخول آمن 100% ومحمي بواسطة Google
+        </p>
+
       </div>
     </div>
   );
-}
+              }
+              
