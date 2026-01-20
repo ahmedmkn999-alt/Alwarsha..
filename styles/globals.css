@@ -1,7 +1,27 @@
+/* 1. استيراد خط Cairo من جوجل */
+@import url('https://fonts.googleapis.com/css2?family=Cairo:wght@300;400;600;700;900&display=swap');
+
+/* 2. تطبيق الخط على كل عناصر الموقع */
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
 
 body {
-  @apply bg-gray-50 text-slate-800;
+  font-family: 'Cairo', sans-serif;
+  background-color: #fafafa; /* لون خلفية هادي */
+}
+
+/* تحسين شكل السكرول بار (اختياري) */
+::-webkit-scrollbar {
+  width: 8px;
+}
+::-webkit-scrollbar-track {
+  background: #f1f1f1; 
+}
+::-webkit-scrollbar-thumb {
+  background: #FFD700; /* لون ذهبي */
+  border-radius: 4px;
+}
+::-webkit-scrollbar-thumb:hover {
+  background: #d4b106; 
 }
