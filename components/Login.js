@@ -1,5 +1,5 @@
 import { auth } from '../firebaseConfig';
-import { GoogleAuthProvider, signInWithPopup } from "firebase/auth"; // تم تغيير النوع هنا
+import { GoogleAuthProvider, signInWithPopup } from "firebase/auth";
 import Logo from './Logo';
 
 export default function Login() {
@@ -7,7 +7,7 @@ export default function Login() {
   const handleGoogleLogin = async () => {
     const btn = document.getElementById("loginBtn");
     if(btn) {
-      btn.innerText = "جاري فتح نافذة جوجل...";
+      btn.innerText = "جاري الدخول للورشة...";
       btn.disabled = true;
     }
 
@@ -17,14 +17,14 @@ export default function Login() {
     auth.languageCode = 'ar';
 
     try {
-      // استخدام Popup بدلاً من Redirect لتجنب مشكلة sessionStorage
+      // استخدام Popup لضمان استقرار الجلسة وتجنب أخطاء المتصفح
       await signInWithPopup(auth, provider);
-      // بمجرد النجاح، الصفحة هتعمل تحديث تلقائي وتدخلك للـ Dashboard
+      // التوجيه التلقائي للـ Dashboard عند النجاح
     } catch (error) {
       console.error("خطأ في الدخول:", error);
-      alert("مشكلة في تسجيل الدخول: " + error.message);
+      alert("عذراً، حدث خطأ أثناء الدخول للورشة: " + error.message);
       if(btn) {
-        btn.innerText = "تسجيل الدخول بجوجل";
+        btn.innerText = "دخول الورشة بجوجل";
         btn.disabled = false;
       }
     }
@@ -32,14 +32,14 @@ export default function Login() {
 
   return (
     <div className="flex flex-col items-center justify-center min-h-screen bg-black text-white p-6 font-cairo" dir="rtl">
-      <div className="relative bg-zinc-900 p-10 rounded-[2.5rem] shadow-[0_20px_50px_rgba(255,215,0,0.1)] w-full max-w-md border border-zinc-800 text-center animate-fadeIn">
+      <div className="relative bg-zinc-900 p-10 rounded-[2.5rem] shadow-[0_20px_60px_rgba(255,215,0,0.15)] w-full max-w-md border border-zinc-800 text-center animate-fadeIn">
         
         <div className="mb-10 flex justify-center scale-125">
            <Logo />
         </div>
         
-        <h2 className="text-3xl font-black mb-3 text-white">مرحباً بك في <span className="text-yellow-400">فولت</span></h2>
-        <p className="text-zinc-500 mb-10 text-sm">سجل دخولك الآن لتبدأ رحلتك في فولت</p>
+        <h2 className="text-3xl font-black mb-3 text-white">مرحباً بك في <span className="text-yellow-400">الورشة</span></h2>
+        <p className="text-zinc-500 mb-10 text-sm">سجل دخولك الآن لتبدأ البيع والشراء في الورشة</p>
 
         <button 
           id="loginBtn"
@@ -51,10 +51,10 @@ export default function Login() {
             alt="Google" 
             className="w-6 h-6"
           />
-          تسجيل الدخول بجوجل
+          دخول الورشة بجوجل
         </button>
         
-        <p className="mt-8 text-[10px] text-zinc-600 font-bold uppercase tracking-widest">Powered by Firebase & Vercel</p>
+        <p className="mt-8 text-[10px] text-zinc-600 font-bold uppercase tracking-widest italic">نظام الورشة المتكامل • 2026</p>
       </div>
     </div>
   );
