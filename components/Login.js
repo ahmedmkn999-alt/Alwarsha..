@@ -1,18 +1,27 @@
 import { auth } from '../firebaseConfig';
-import { GoogleAuthProvider, signInWithPopup } from "firebase/auth";
+import { GoogleAuthProvider, signInWithRedirect } from "firebase/auth";
 import Logo from './Logo';
 
-export default function Login({ onLogin }) {
+export default function Login() {
 
   const handleGoogleLogin = async () => {
+    // 1. هنعمل زرار "تحميل" بسيط عشان تعرف إنك دوست
+    const btn = document.getElementById("loginBtn");
+    if(btn) {
+      btn.innerText = "جاري التحويل لجوجل...";
+      btn.disabled = true;
+    }
+
+    // 2. التحويل لصفحة جوجل
     const provider = new GoogleAuthProvider();
     try {
-      const result = await signInWithPopup(auth, provider);
-      onLogin(result.user);
+      await signInWithRedirect(auth, provider);
     } catch (error) {
-      // السطر ده هيظهرلك رسالة فيها سبب المشكلة بالظبط
-      alert("⚠️ كود الخطأ: " + error.code + "\n" + "الرسالة: " + error.message);
-      console.error("Login Error:", error);
+      alert("مشكلة في التحويل: " + error.message);
+      if(btn) {
+        btn.innerText = "تسجيل الدخول بجوجل";
+        btn.disabled = false;
+      }
     }
   };
 
@@ -24,10 +33,11 @@ export default function Login({ onLogin }) {
            <Logo />
         </div>
         
-        <h2 className="text-2xl font-bold mb-3 text-white" style={{fontFamily: 'Cairo, sans-serif'}}>مرحباً بك في <span className="text-primary">فولت</span></h2>
+        <h2 className="text-2xl font-bold mb-3 text-white font-cairo">مرحباً بك في <span className="text-primary">فولت</span></h2>
         <p className="text-gray-400 mb-10 text-sm">سجل دخولك لتبدأ البيع والشراء</p>
 
         <button 
+          id="loginBtn"
           onClick={handleGoogleLogin} 
           className="w-full bg-white text-black py-4 rounded-xl font-bold text-lg hover:bg-gray-200 transition-all flex items-center justify-center gap-3 shadow-xl"
         >
@@ -41,4 +51,4 @@ export default function Login({ onLogin }) {
       </div>
     </div>
   );
-            }
+}
