@@ -8,45 +8,39 @@ export default function Login({ onLogin }) {
     const provider = new GoogleAuthProvider();
     try {
       const result = await signInWithPopup(auth, provider);
-      // الدخول نجح، نرسل بيانات المستخدم للموقع الرئيسي
       onLogin(result.user);
     } catch (error) {
       console.error("Google Error:", error);
-      alert("حدث خطأ أثناء محاولة الدخول بجوجل. يرجى المحاولة مرة أخرى.");
+      alert("حدث خطأ، حاول مرة أخرى.");
     }
   };
 
   return (
-    <div className="flex flex-col items-center justify-center min-h-screen bg-dark text-white p-4" dir="rtl">
-      <div className="bg-slate-800 p-8 rounded-2xl shadow-2xl w-full max-w-md border border-slate-700 text-center">
+    <div className="flex flex-col items-center justify-center min-h-screen bg-black text-white p-6" dir="rtl">
+      {/* خلفية جمالية خفيفة */}
+      <div className="absolute inset-0 bg-[url('https://www.transparenttextures.com/patterns/carbon-fibre.png')] opacity-20"></div>
+
+      <div className="relative bg-surface p-10 rounded-3xl shadow-[0_0_30px_rgba(255,215,0,0.1)] w-full max-w-md border border-zinc-800 text-center">
         
-        {/* اللوجو */}
-        <div className="mb-8 flex justify-center scale-90">
+        <div className="mb-10 flex justify-center scale-110">
            <Logo />
         </div>
         
-        <h2 className="text-xl font-bold mb-2 text-primary">أهلاً بك في الورشة 🔧</h2>
-        <p className="text-gray-400 mb-8">سجل دخولك وابدأ البيع والشراء فوراً</p>
+        <h2 className="text-2xl font-bold mb-3 text-white">مرحباً بك في <span className="text-primary">فولت</span></h2>
+        <p className="text-textMuted mb-10 text-sm">المنصة الأولى لقطع الغيار والأجهزة الكهربية</p>
 
-        {/* زر جوجل الوحيد */}
         <button 
           onClick={handleGoogleLogin} 
-          className="w-full bg-white text-slate-900 py-4 rounded-xl font-bold text-lg hover:bg-gray-100 transition-all transform hover:scale-105 shadow-lg flex items-center justify-center gap-3"
+          className="w-full bg-white text-black py-4 rounded-xl font-bold text-lg hover:bg-gray-200 transition-all flex items-center justify-center gap-3 shadow-xl"
         >
           <img 
             src="https://www.gstatic.com/firebasejs/ui/2.0.0/images/auth/google.svg" 
             alt="Google" 
             className="w-6 h-6"
           />
-          تسجيل الدخول باستخدام Google
+          تسجيل الدخول بجوجل
         </button>
-
-        <p className="mt-8 text-xs text-gray-500">
-          دخول آمن 100% ومحمي بواسطة Google
-        </p>
-
       </div>
     </div>
   );
-              }
-              
+}
