@@ -3,11 +3,14 @@ import { getAuth } from "firebase/auth";
 import { getDatabase } from "firebase/database";
 
 const firebaseConfig = {
-  // 👇 ده المفتاح الصح (لاحظ الحروف: F مش P، و O مش D)
-  apiKey: "AIzaSyAnxD8ecXF2bIkbQqI9PANfcEkCq2s4OXDg",
+  // المفتاح الصحيح (تأكد من الحروف F و O كما في الصورة الأصلية)
+  apiKey: "AIzaSyAnxD8ecXF2bIkbQqI9PANfcEkCq2s4OXDg", 
   
   authDomain: "alwarsha-cf816.firebaseapp.com",
-  databaseURL: "https://alwarsha-cf816-default-rtdb.firebaseio.com",
+  
+  // الرابط اللي أنت جبته دلوقتي
+  databaseURL: "https://alwarsha-cf816-default-rtdb.firebaseio.com", 
+  
   projectId: "alwarsha-cf816",
   storageBucket: "alwarsha-cf816.firebasestorage.app",
   messagingSenderId: "787131606543",
@@ -15,6 +18,9 @@ const firebaseConfig = {
   measurementId: "G-1SHMBCMTG2"
 };
 
+// تهيئة التطبيق
 const app = initializeApp(firebaseConfig);
+
+// تصدير الأدوات عشان الموقع يشتغل
 export const auth = getAuth(app);
 export const db = getDatabase(app);
