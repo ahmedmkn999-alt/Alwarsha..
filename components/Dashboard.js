@@ -17,7 +17,9 @@ export default function Dashboard({ user }) {
   
   // --- حالات المودالات (الصور والنشر والشات) ---
   const [showModal, setShowModal] = useState(false);
-  const [newProduct, setNewProduct] = useState({ name: '', price: '', desc: '', condition: 'new', image: null, phone: '', category: 'تكييفات' });
+  const [newProduct, setNewProduct] = useState({ 
+    name: '', price: '', desc: '', condition: 'new', image: null, phone: '', category: 'تكييفات' 
+  });
   const [uploading, setUploading] = useState(false);
   const [viewImage, setViewImage] = useState(null);
   const [messageModal, setMessageModal] = useState({ show: false, receiverId: '', receiverName: '' });
@@ -29,10 +31,10 @@ export default function Dashboard({ user }) {
   const [mediaRecorder, setMediaRecorder] = useState(null);
   const touchStartPos = useRef(0);
 
-  // قائمة الأقسام مع الصور المرفوعة على GitHub
+  // الأقسام مربوطة بالصور المحلية في مجلد public
   const categories = [
     { id: 'parts', name: 'قطع غيار', img: '/parts.jpg' },
-    { id: 'heater', name: 'سخانات', img: '/heater (1).jpg' },
+    { id: 'heater', name: 'سخانات', img: '/Heater (1).jpg' },
     { id: 'ac', name: 'تكييفات', img: '/ac.jpg.webp' },
     { id: 'wash', name: 'غسالات', img: '/washing.jpg' },
     { id: 'fridge', name: 'ثلاجات', img: '/fridge.jpg' },
@@ -43,13 +45,24 @@ export default function Dashboard({ user }) {
   ];
 
   useEffect(() => {
-    // 1. منع الزوم التلقائي عند التركيز على الحقول
+    const head = document.getElementsByTagName('head')[0];
+    
+    // ربط ملف الـ manifest والأيقونة للتثبيت على الشاشة
+    const manifestLink = document.createElement('link');
+    manifestLink.rel = 'manifest'; manifestLink.href = '/manifest.json';
+    head.appendChild(manifestLink);
+
+    const appleIcon = document.createElement('link');
+    appleIcon.rel = 'apple-touch-icon'; appleIcon.href = '/icon.png';
+    head.appendChild(appleIcon);
+
+    // منع الزوم التلقائي
     const meta = document.createElement('meta');
     meta.name = "viewport"; 
     meta.content = "width=device-width, initial-scale=1, maximum-scale=1, user-scalable=0";
-    document.getElementsByTagName('head')[0].appendChild(meta);
+    head.appendChild(meta);
 
-    // 2. جلب المنتجات
+    // جلب المنتجات
     onValue(ref(db, 'products'), (snapshot) => {
       const data = snapshot.val();
       const loaded = [];
@@ -57,7 +70,7 @@ export default function Dashboard({ user }) {
       setProducts(loaded.reverse()); 
     });
 
-    // 3. جلب الرسائل الخاصة بالمستخدم
+    // جلب الرسائل (بما فيها ردود الإدارة)
     if (user?.uid) {
       onValue(ref(db, `messages/${user.uid}`), (snapshot) => {
         const data = snapshot.val();
@@ -79,10 +92,10 @@ export default function Dashboard({ user }) {
     if (!supportMsg.trim()) return alert("يرجى كتابة رسالتك");
     push(ref(db, 'support'), {
       userId: user.uid, userName: user.displayName, msg: supportMsg, date: new Date().toISOString()
-    }).then(() => { setSupportMsg(''); alert("تم إرسال طلبك للإدارة بنجاح ✅"); });
+    }).then(() => { setSupportMsg(''); alert("تم إرسال طلبك للإدارة ✅"); });
   };
 
-  // --- وظائف الشات والفويس ---
+  // --- وظائف الفويس والشات ---
   const startRecording = async (e) => {
     try {
       touchStartPos.current = e.touches ? e.touches[0].clientX : e.clientX;
@@ -102,7 +115,7 @@ export default function Dashboard({ user }) {
       recorder.start();
       setMediaRecorder(recorder);
       setIsRecording(true);
-    } catch (err) { alert("يرجى تفعيل الميكروفون 🎤"); }
+    } catch (err) { alert("فعل الميكروفون 🎤"); }
   };
 
   const handleDrag = (e) => {
@@ -128,16 +141,15 @@ export default function Dashboard({ user }) {
     setMsgText('');
   };
 
-  // --- وظيفة النشر ---
   const handlePublish = (e) => {
     e.preventDefault();
-    if (!newProduct.image || !newProduct.name || !newProduct.phone || !newProduct.price) return alert("يرجى إكمال كافة البيانات 🚀");
+    if (!newProduct.image || !newProduct.name || !newProduct.phone || !newProduct.price) return alert("أكمل البيانات 🚀");
     setUploading(true);
     push(ref(db, 'products'), { ...newProduct, sellerId: user.uid, sellerName: user.displayName, date: new Date().toISOString() })
     .then(() => { 
       setUploading(false); setShowModal(false); 
       setNewProduct({ name: '', price: '', desc: '', condition: 'new', image: null, phone: '', category: 'تكييفات' }); 
-      alert("تم النشر في الورشة بنجاح ✅");
+      alert("تم النشر بنجاح ✅");
     });
   };
 
@@ -151,39 +163,36 @@ export default function Dashboard({ user }) {
   return (
     <div className="min-h-screen bg-zinc-50 pb-24 font-cairo select-none" dir="rtl">
       
-      {/* 1. Header الورشة الموحد مع اللوجو وزر الرجوع */}
+      {/* Header مع اللوجو الموحد وزر الرجوع */}
       <header className="bg-zinc-950 text-white shadow-xl sticky top-0 z-50 border-b-2 border-yellow-400">
         <div className="container mx-auto px-4 py-3 flex justify-between items-center">
           
           <div className="flex items-center gap-3">
-            {/* زر الرجوع الذكي */}
             {activeTab !== 'home' && (
-              <button onClick={handleBack} className="bg-zinc-900 p-2 rounded-xl text-yellow-400 font-black text-xs hover:bg-zinc-800 transition-all">⬅️ رجوع</button>
+              <button onClick={handleBack} className="bg-zinc-900 p-2 rounded-xl text-yellow-400 font-black text-[10px] active:scale-90 transition-all">⬅️ رجوع</button>
             )}
-            
             <div className="flex items-center gap-2 cursor-pointer group" onClick={handleBack}>
-              <div className="w-10 h-10 bg-yellow-400 rounded-full flex items-center justify-center border-2 border-black shadow-[0_0_15px_rgba(255,215,0,0.2)]">
+              <div className="w-10 h-10 bg-yellow-400 rounded-full flex items-center justify-center border-2 border-black">
                  <span className="text-black text-xl font-black italic">W</span>
               </div>
-              <div className="text-xl font-black italic text-yellow-400 tracking-tighter transition-all group-hover:scale-105">الورشة</div>
+              <div className="text-xl font-black italic text-yellow-400 tracking-tighter">الورشة</div>
             </div>
           </div>
 
           <div className="flex items-center gap-3">
-             <button onClick={() => setActiveTab('support')} className={`p-2.5 rounded-xl transition-all ${activeTab === 'support' ? 'bg-yellow-400 text-black shadow-lg shadow-yellow-400/20' : 'bg-zinc-900 text-zinc-500'}`}>🎧</button>
-             <button onClick={() => setActiveTab('inbox')} className={`p-2.5 rounded-xl relative transition-all ${activeTab === 'inbox' ? 'bg-yellow-400 text-black shadow-lg shadow-yellow-400/20' : 'bg-zinc-900 text-zinc-500'}`}>
+             <button onClick={() => setActiveTab('support')} className={`p-2.5 rounded-xl transition-all ${activeTab === 'support' ? 'bg-yellow-400 text-black' : 'bg-zinc-900 text-zinc-500'}`}>🎧</button>
+             <button onClick={() => setActiveTab('inbox')} className={`p-2.5 rounded-xl relative transition-all ${activeTab === 'inbox' ? 'bg-yellow-400 text-black' : 'bg-zinc-900 text-zinc-500'}`}>
                 📩 {myMessages.length > 0 && <span className="absolute -top-1 -right-1 bg-red-600 text-white text-[9px] rounded-full w-4 h-4 flex items-center justify-center border-2 border-zinc-950 font-black">!</span>}
              </button>
-             <button onClick={() => setActiveTab('profile')} className={`transition-all ${activeTab === 'profile' ? 'ring-2 ring-yellow-400 p-0.5 rounded-full' : ''}`}>
+             <button onClick={() => setActiveTab('profile')} className={`active:scale-90 transition-transform ${activeTab === 'profile' ? 'ring-2 ring-yellow-400 p-0.5 rounded-full' : ''}`}>
                 <img src={user.photoURL} className="w-9 h-9 rounded-full border border-zinc-700 object-cover" alt="profile" />
              </button>
           </div>
         </div>
         
-        {/* البحث بالاقتراحات (يظهر فقط في الرئيسية) */}
         {activeTab === 'home' && (
           <div className="container mx-auto px-4 pb-3 relative animate-fadeIn">
-              <input className="w-full bg-zinc-900 border-none rounded-2xl p-3 text-xs text-white outline-none focus:ring-1 focus:ring-yellow-400 font-bold text-center" placeholder="ابحث عن أجهزة كهربائية..." value={searchTerm} onFocus={() => setShowSearchSuggestions(true)} onChange={(e) => setSearchTerm(e.target.value)} />
+              <input className="w-full bg-zinc-900 border-none rounded-2xl p-3 text-xs text-white outline-none focus:ring-1 focus:ring-yellow-400 font-bold text-center" placeholder="ابحث في الورشة..." value={searchTerm} onFocus={() => setShowSearchSuggestions(true)} onChange={(e) => setSearchTerm(e.target.value)} />
               {showSearchSuggestions && (
                 <div className="absolute top-full left-4 right-4 bg-zinc-900 rounded-2xl mt-2 p-2 shadow-2xl z-[60] border border-zinc-800 max-h-48 overflow-y-auto">
                   {categories.map(cat => (
@@ -196,8 +205,8 @@ export default function Dashboard({ user }) {
         )}
       </header>
 
-      {/* 2. شريط الأقسام (صور 4x6 GitHub) */}
-      {['home', 'new', 'used'].includes(activeTab) && (
+      {/* شريط الأقسام المطور (4x6) */}
+      {activeTab === 'home' && (
         <div className="bg-white shadow-sm border-b py-4 overflow-x-auto no-scrollbar sticky top-[125px] z-40 animate-slideDown">
           <div className="container mx-auto px-4 flex gap-4">
             <button onClick={() => setSelectedCategory('all')} className={`flex-shrink-0 w-24 aspect-[4/6] rounded-[1.5rem] flex flex-col items-center justify-center border-2 transition-all ${selectedCategory === 'all' ? 'border-yellow-400 bg-yellow-50 shadow-lg' : 'border-zinc-100 bg-zinc-50 opacity-60'}`}>
@@ -217,8 +226,8 @@ export default function Dashboard({ user }) {
 
       <main className="container mx-auto p-4 md:p-8">
         
-        {/* 3. عرض المنتجات (الرئيسية / جديد / مستعمل) */}
-        {['home', 'new', 'used'].includes(activeTab) && (
+        {/* الصفحة الرئيسية */}
+        {activeTab === 'home' && (
           <>
             <div className="flex justify-center gap-3 mb-8">
               <button onClick={() => setActiveTab('home')} className={`px-8 py-2.5 rounded-2xl font-black text-xs transition-all ${activeTab === 'home' ? 'bg-zinc-950 text-yellow-400 shadow-lg' : 'bg-white text-zinc-400 border'}`}>الكل</button>
@@ -229,7 +238,7 @@ export default function Dashboard({ user }) {
               {filtered.map(item => (
                 <div key={item.id} className="bg-white rounded-[2rem] border overflow-hidden shadow-sm hover:shadow-xl transition-all group">
                   <div className="h-60 overflow-hidden relative">
-                    <img src={item.image} className="w-full h-full object-cover cursor-pointer group-hover:scale-105 transition-transform duration-700" onClick={() => setViewImage(item.image)} />
+                    <img src={item.image} className="w-full h-full object-cover cursor-pointer group-hover:scale-105 transition-transform duration-700 shadow-inner" onClick={() => setViewImage(item.image)} />
                     <div className="absolute top-3 right-3 bg-yellow-400 text-black px-3 py-1 rounded-xl font-black text-[9px] shadow-md">{item.category}</div>
                   </div>
                   <div className="p-6 text-right">
@@ -250,15 +259,15 @@ export default function Dashboard({ user }) {
           </>
         )}
 
-        {/* 4. بريد الورشة (Inbox) */}
+        {/* بريد الورشة (Inbox) */}
         {activeTab === 'inbox' && (
           <div className="max-w-2xl mx-auto space-y-4 animate-fadeIn">
-            <h2 className="text-2xl font-black mb-6 text-right pr-3 border-r-4 border-yellow-400 italic">بريد الورشة 📩</h2>
+            <h2 className="text-2xl font-black mb-6 text-right pr-3 border-r-4 border-yellow-400 italic font-cairo">بريد الورشة 📩</h2>
             {[...new Map(myMessages.map(m => [m.fromId === user.uid ? m.toId : m.fromId, m])).values()].map(chat => (
               <div key={chat.id} onClick={() => setMessageModal({ show: true, receiverId: chat.fromId === user.uid ? chat.toId : chat.fromId, receiverName: chat.fromName })} className="bg-white p-6 rounded-[2rem] border flex items-center gap-5 cursor-pointer hover:border-yellow-400 transition-all shadow-sm">
                 <div className="w-14 h-14 rounded-full bg-zinc-950 text-yellow-400 flex items-center justify-center font-black text-xl">{chat.fromName[0]}</div>
                 <div className="flex-1 text-right">
-                  <h4 className="font-black text-zinc-900">{chat.fromName === 'Admin' ? 'إدارة الورشة ⚡' : chat.fromName}</h4>
+                  <h4 className="font-black text-zinc-900">{chat.fromId === 'Admin' ? 'إدارة الورشة ⚡' : chat.fromName}</h4>
                   <p className="text-xs text-zinc-400 line-clamp-1 mt-1">{chat.text || "🎤 رسالة صوتية"}</p>
                 </div>
               </div>
@@ -266,34 +275,30 @@ export default function Dashboard({ user }) {
           </div>
         )}
 
-        {/* 5. دعم الورشة (Support) */}
+        {/* دعم الورشة (Support) */}
         {activeTab === 'support' && (
           <div className="max-w-md mx-auto bg-white p-8 rounded-[2.5rem] border text-center shadow-lg animate-fadeIn">
-            <h2 className="text-xl font-black mb-4 italic italic">دعم الورشة 🎧</h2>
-            <textarea className="w-full bg-zinc-50 border rounded-2xl p-4 text-sm mb-4 outline-none min-h-[150px] font-bold" placeholder="اكتب مشكلتك هنا وسنرد عليك في البريد..." value={supportMsg} onChange={(e) => setSupportMsg(e.target.value)} />
+            <h2 className="text-xl font-black mb-4 italic">دعم الورشة 🎧</h2>
+            <textarea className="w-full bg-zinc-50 border rounded-2xl p-4 text-sm mb-4 outline-none min-h-[150px] font-bold" placeholder="اكتب مشكلتك هنا وسيرد عليك المدير في البريد..." value={supportMsg} onChange={(e) => setSupportMsg(e.target.value)} />
             <button onClick={handleSupportSend} className="w-full bg-yellow-400 text-black py-4 rounded-2xl font-black shadow-lg hover:scale-[1.02] transition-transform">إرسال للمراجعة</button>
           </div>
         )}
 
-        {/* 6. الملف الشخصي (Profile) */}
+        {/* الملف الشخصي (Profile) */}
         {activeTab === 'profile' && (
-          <div className="max-w-xl mx-auto animate-fadeIn text-right">
-            <div className="bg-white rounded-[2.5rem] p-8 border mb-8 text-center shadow-sm relative overflow-hidden">
-              <img src={user.photoURL} className="w-24 h-24 rounded-full mx-auto border-4 border-yellow-400 mb-4 object-cover shadow-lg" alt="user" />
+          <div className="max-w-xl mx-auto text-right animate-fadeIn">
+            <div className="bg-white rounded-[2.5rem] p-8 border mb-8 text-center shadow-sm">
+              <img src={user.photoURL} className="w-24 h-24 rounded-full mx-auto border-4 border-yellow-400 mb-4 object-cover" alt="user" />
               <h2 className="text-xl font-black mb-2">{user.displayName}</h2>
-              <p className="text-zinc-400 text-[10px] mb-6">{user.email}</p>
-              <button onClick={() => signOut(auth).then(() => window.location.reload())} className="bg-red-50 text-red-600 px-8 py-2.5 rounded-xl font-black text-xs border border-red-100 hover:bg-red-100 transition-all">تسجيل الخروج</button>
+              <button onClick={() => signOut(auth).then(() => window.location.reload())} className="bg-red-50 text-red-600 px-8 py-2 rounded-xl font-black text-xs border border-red-100 hover:bg-red-100 transition-all">تسجيل الخروج</button>
             </div>
-            <h3 className="font-black mb-4 pr-3 border-r-4 border-yellow-400 italic">إعلاناتي المعروضة</h3>
+            <h3 className="font-black mb-4 pr-3 border-r-4 border-yellow-400 italic">إعلاناتي</h3>
             <div className="grid grid-cols-1 gap-4">
                 {products.filter(p => p.sellerId === user.uid).map(item => (
-                    <div key={item.id} className="bg-white p-4 rounded-3xl border flex items-center justify-between shadow-sm hover:border-yellow-400/30 transition-all">
+                    <div key={item.id} className="bg-white p-4 rounded-3xl border flex items-center justify-between shadow-sm">
                         <div className="flex items-center gap-4">
-                            <img src={item.image} className="w-16 h-16 rounded-2xl object-cover shadow-sm" alt={item.name} onClick={() => setViewImage(item.image)} />
-                            <div>
-                                <span className="font-black text-sm block">{item.name}</span>
-                                <span className="text-[10px] text-yellow-600 font-bold">{item.price} ج.م</span>
-                            </div>
+                            <img src={item.image} className="w-16 h-16 rounded-2xl object-cover" alt={item.name} />
+                            <span className="font-black text-sm">{item.name}</span>
                         </div>
                         <button onClick={() => remove(ref(db, `products/${item.id}`))} className="text-red-500 p-2 hover:bg-red-50 rounded-full transition-all">🗑️</button>
                     </div>
@@ -303,9 +308,7 @@ export default function Dashboard({ user }) {
         )}
       </main>
 
-      {/* --- المودالات الإضافية --- */}
-
-      {/* مودال نشر جهاز جديد (مع اختيار القسم والحالة) */}
+      {/* مودال نشر جديد */}
       {showModal && (
         <div className="fixed inset-0 bg-black/80 z-[120] flex items-center justify-center p-4 backdrop-blur-sm">
           <div className="bg-white w-full max-w-lg p-8 rounded-[2.5rem] relative overflow-y-auto max-h-[90vh] shadow-2xl animate-slideUp">
@@ -319,11 +322,11 @@ export default function Dashboard({ user }) {
                        reader.onloadend = () => setNewProduct({ ...newProduct, image: reader.result });
                        reader.readAsDataURL(file);
                     }} className="absolute inset-0 w-full h-full opacity-0 cursor-pointer" />
-                    {newProduct.image ? <img src={newProduct.image} className="h-40 mx-auto rounded-xl shadow-md object-contain" /> : <p className="text-xs text-zinc-400 py-10 font-black">اضغط لرفع صورة الجهاز 📸</p>}
+                    {newProduct.image ? <img src={newProduct.image} className="h-36 mx-auto rounded-xl shadow-md object-contain" /> : <p className="text-xs text-zinc-400 py-8 font-black">ارفع صورة الجهاز 📸</p>}
                 </div>
                 <input placeholder="اسم الجهاز" className="w-full bg-zinc-100 p-4 rounded-xl outline-none text-sm font-bold" value={newProduct.name} onChange={e => setNewProduct({...newProduct, name: e.target.value})} />
-                <div className="flex flex-col gap-2">
-                   <label className="text-[10px] font-black text-zinc-400 pr-2 italic">اختر القسم:</label>
+                <div className="flex flex-col gap-1">
+                   <label className="text-[9px] font-black text-zinc-400 pr-2 italic">اختر القسم:</label>
                    <select className="w-full bg-zinc-100 p-4 rounded-xl font-bold text-sm outline-none" value={newProduct.category} onChange={e => setNewProduct({...newProduct, category: e.target.value})}>
                      {categories.map(cat => <option key={cat.id} value={cat.name}>{cat.name}</option>)}
                    </select>
@@ -334,21 +337,21 @@ export default function Dashboard({ user }) {
                       <option value="new">✨ جديد</option><option value="used">🛠️ مستعمل</option>
                    </select>
                 </div>
-                <input placeholder="رقم الهاتف للتواصل" className="w-full bg-zinc-100 p-4 rounded-xl outline-none font-bold text-sm" value={newProduct.phone} onChange={e => setNewProduct({...newProduct, phone: e.target.value})} />
-                <button type="submit" disabled={uploading} className="w-full bg-yellow-400 py-4 rounded-2xl font-black shadow-lg active:scale-95 transition-transform">{uploading ? 'جاري النشر بالورشة..' : 'نشر الجهاز الآن ✅'}</button>
+                <input placeholder="رقم الهاتف" className="w-full bg-zinc-100 p-4 rounded-xl outline-none font-bold text-sm" value={newProduct.phone} onChange={e => setNewProduct({...newProduct, phone: e.target.value})} />
+                <button type="submit" disabled={uploading} className="w-full bg-yellow-400 py-4 rounded-2xl font-black shadow-lg">{uploading ? 'جاري النشر..' : 'نشر الجهاز الآن ✅'}</button>
              </form>
           </div>
         </div>
       )}
 
-      {/* مودال الشات المطور (فويس + كتابة) */}
+      {/* مودال الشات المطور */}
       {messageModal.show && (
         <div className="fixed inset-0 bg-black/95 z-[150] flex items-center justify-center p-0 md:p-6 backdrop-blur-md">
           <div className="bg-white w-full max-w-lg h-full md:h-[85vh] md:rounded-[3rem] flex flex-col shadow-2xl relative animate-slideUp">
             <div className="p-6 border-b flex justify-between items-center bg-zinc-50 md:rounded-t-[3rem]">
                <div className="flex items-center gap-3">
                  <div className="w-10 h-10 rounded-full bg-zinc-950 text-yellow-400 flex items-center justify-center font-black">{messageModal.receiverName[0]}</div>
-                 <h3 className="font-black text-lg">{messageModal.receiverName}</h3>
+                 <h3 className="font-black text-lg">{messageModal.receiverName === 'Admin' ? 'إدارة الورشة ⚡' : messageModal.receiverName}</h3>
                </div>
                <button onClick={() => setMessageModal({ show: false, receiverId: '', receiverName: '' })} className="text-4xl text-zinc-300 hover:text-black">&times;</button>
             </div>
@@ -357,13 +360,12 @@ export default function Dashboard({ user }) {
                  <div key={i} className={`flex ${msg.fromId === user.uid ? 'justify-end' : 'justify-start'}`}>
                     <div className={`p-4 rounded-[1.5rem] shadow-sm max-w-[85%] ${msg.fromId === user.uid ? 'bg-yellow-400 text-black rounded-tr-none' : 'bg-zinc-100 text-zinc-800 rounded-tl-none'}`}>
                        {msg.voice ? <audio src={msg.voice} controls className="h-8 w-44" /> : <p className="text-sm font-bold leading-relaxed">{msg.text}</p>}
-                       <span className="text-[7px] opacity-30 block mt-1">{new Date(msg.date).toLocaleTimeString('ar-EG')}</span>
                     </div>
                  </div>
                ))}
             </div>
             <div className="p-5 bg-white border-t md:rounded-b-[3rem] flex gap-2 items-center relative">
-               <button onMouseDown={startRecording} onMouseUp={stopRecording} onTouchStart={startRecording} onTouchEnd={stopRecording} onMouseMove={handleDrag} onTouchMove={handleDrag} className={`p-5 rounded-[1.5rem] transition-all ${isRecording ? (isCancelled ? 'bg-zinc-800 text-red-500 scale-125 shadow-inner' : 'bg-red-500 text-white scale-125 shadow-lg') : 'bg-zinc-100 text-zinc-400 hover:bg-zinc-200'}`}>
+               <button onMouseDown={startRecording} onMouseUp={stopRecording} onTouchStart={startRecording} onTouchEnd={stopRecording} onMouseMove={handleDrag} onTouchMove={handleDrag} className={`p-5 rounded-[1.5rem] transition-all ${isRecording ? (isCancelled ? 'bg-zinc-800 text-red-500 scale-125' : 'bg-red-500 text-white scale-125 shadow-lg') : 'bg-zinc-100 text-zinc-400 hover:bg-zinc-200'}`}>
                  {isCancelled ? '🗑️' : (isRecording ? '🛑' : '🎤')}
                </button>
                <input className="flex-1 bg-zinc-100 p-4 rounded-2xl outline-none font-bold text-xs" placeholder={isRecording ? (isCancelled ? "اترك للحذف" : "اسحب يمين للإلغاء ➡️") : "اكتب رسالة للورشة..."} value={msgText} onChange={(e) => setMsgText(e.target.value)} disabled={isRecording} />
@@ -373,7 +375,6 @@ export default function Dashboard({ user }) {
         </div>
       )}
 
-      {/* مودال عرض الصورة بالكامل */}
       {viewImage && (
         <div className="fixed inset-0 bg-black/98 z-[200] flex items-center justify-center p-4 animate-fadeIn" onClick={() => setViewImage(null)}>
            <img src={viewImage} className="max-w-full max-h-full rounded-2xl shadow-2xl animate-zoomIn" alt="full view" />
@@ -381,14 +382,13 @@ export default function Dashboard({ user }) {
         </div>
       )}
 
-      {/* زر الـ (+) العائم الملون */}
       {!['inbox', 'profile', 'support'].includes(activeTab) && (
-        <button onClick={() => setShowModal(true)} className="fixed bottom-10 left-10 w-20 h-20 bg-yellow-400 text-black rounded-full shadow-[0_10px_40px_rgba(255,215,0,0.4)] text-4xl font-black z-[100] border-4 border-white hover:scale-110 active:scale-90 transition-all flex items-center justify-center">+</button>
+        <button onClick={() => setShowModal(true)} className="fixed bottom-10 left-10 w-20 h-20 bg-yellow-400 text-black rounded-full shadow-[0_10px_40px_rgba(255,215,0,0.4)] text-4xl font-black z-[100] border-4 border-white hover:scale-110 active:scale-90 transition-all flex items-center justify-center shadow-lg shadow-yellow-400/20">+</button>
       )}
 
-      {/* توقيع أحمد الذهبي الفخم في الأسفل */}
+      {/* التوقيع الذهبي */}
       <footer className="text-center pb-10 pt-4 opacity-40">
-          <p className="text-[12px] text-zinc-400 font-black tracking-[0.4em] uppercase">AHMED • EST. 2026</p>
+          <p className="text-[12px] text-zinc-400 font-black uppercase tracking-[0.4em] italic italic">AHMED • EST. 2026</p>
       </footer>
 
     </div>
