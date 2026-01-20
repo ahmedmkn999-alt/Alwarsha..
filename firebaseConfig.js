@@ -3,7 +3,9 @@ import { getAuth } from "firebase/auth";
 import { getDatabase } from "firebase/database";
 
 const firebaseConfig = {
+  // 👇 ده المفتاح السليم (لاحظ الحروف: F و O)
   apiKey: "AIzaSyAnxD8ecXF2bIkbQqI9PANfcEkCq2s4OXDg",
+  
   authDomain: "alwarsha-cf816.firebaseapp.com",
   databaseURL: "https://alwarsha-cf816-default-rtdb.firebaseio.com",
   projectId: "alwarsha-cf816",
