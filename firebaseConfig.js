@@ -3,7 +3,7 @@ import { getAuth } from "firebase/auth";
 import { getDatabase } from "firebase/database";
 
 const firebaseConfig = {
-  // 👇 ده المفتاح السليم (لاحظ الحروف: F و O)
+  // 👇 ده المفتاح الصح (لاحظ الحروف: F مش P، و O مش D)
   apiKey: "AIzaSyAnxD8ecXF2bIkbQqI9PANfcEkCq2s4OXDg",
   
   authDomain: "alwarsha-cf816.firebaseapp.com",
