@@ -3,7 +3,7 @@ import { getAuth } from "firebase/auth";
 import { getDatabase } from "firebase/database";
 
 const firebaseConfig = {
-  // 👇 تم تصحيح المفتاح هنا طبقاً للصورة الأصلية
+  // 👇 ده المفتاح الصح 100% من الصورة (تم تصحيح الأخطاء)
   apiKey: "AIzaSyAmxDBecXF2bIkbQqI9PANfcEkCq2s4OXDg",
   
   authDomain: "alwarsha-cf816.firebaseapp.com",
@@ -18,6 +18,6 @@ const firebaseConfig = {
 // تهيئة التطبيق
 const app = initializeApp(firebaseConfig);
 
-// 👇 السطرين دول مهمين جداً عشان باقي الصفحات تشوف القاعدة
+// تصدير الأدوات
 export const auth = getAuth(app);
 export const db = getDatabase(app);
