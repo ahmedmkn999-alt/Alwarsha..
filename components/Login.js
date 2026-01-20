@@ -19,7 +19,6 @@ export default function Login() {
     try {
       // استخدام Popup لضمان استقرار الجلسة وتجنب أخطاء المتصفح
       await signInWithPopup(auth, provider);
-      // التوجيه التلقائي للـ Dashboard عند النجاح
     } catch (error) {
       console.error("خطأ في الدخول:", error);
       alert("عذراً، حدث خطأ أثناء الدخول للورشة: " + error.message);
@@ -39,7 +38,7 @@ export default function Login() {
         </div>
         
         <h2 className="text-3xl font-black mb-3 text-white">مرحباً بك في <span className="text-yellow-400">الورشة</span></h2>
-        <p className="text-zinc-500 mb-10 text-sm">سجل دخولك الآن لتبدأ البيع والشراء في الورشة</p>
+        <p className="text-zinc-500 mb-10 text-sm">سجل دخولك الآن لتبدأ رحلتك في الورشة</p>
 
         <button 
           id="loginBtn"
