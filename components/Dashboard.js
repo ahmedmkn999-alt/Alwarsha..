@@ -28,7 +28,7 @@ export default function Dashboard({ user }) {
   // القائمة المحدثة بأسماء الصور الخاصة بك
   const categories = [
     { id: 'parts', name: 'قطع غيار', img: '/parts.jpg' },
-    { id: 'heater', name: 'سخانات', img: '/heater(1).jpg' }, // 👈 تم التعديل هنا
+    { id: 'heater', name: 'سخانات', img: '/heater (1).jpg' }, // 👈 تم التعديل هنا
     { id: 'ac', name: 'تكييفات', img: '/ac.jpg.webp' },
     { id: 'wash', name: 'غسالات', img: '/washing.jpg' },
     { id: 'fridge', name: 'ثلاجات', img: '/fridge.jpg' },
