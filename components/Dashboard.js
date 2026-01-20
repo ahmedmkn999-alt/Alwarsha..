@@ -24,20 +24,19 @@ export default function Dashboard({ user }) {
   const [mediaRecorder, setMediaRecorder] = useState(null);
   const touchStartPos = useRef(0);
 
-  // قائمة الأقسام الثابتة للورشة
+  // تحديث مسارات الصور لتكون من مجلد المشروع المحلي (GitHub)
   const categories = [
-    { id: 'ac', name: 'تكييفات', img: 'https://images.unsplash.com/photo-1585338107529-13afc5f02586?q=80&w=400' },
-    { id: 'wash', name: 'غسالات', img: 'https://images.unsplash.com/photo-1626806819282-2c1dc01a5e0c?q=80&w=400' },
-    { id: 'fridge', name: 'ثلاجات', img: 'https://images.unsplash.com/photo-1584622650111-993a426fbf0a?q=80&w=400' },
-    { id: 'heater', name: 'سخانات', img: 'https://images.unsplash.com/photo-1585338447937-7082f89763d5?q=80&w=400' },
-    { id: 'stove', name: 'بوتجازات', img: 'https://images.unsplash.com/photo-1521207418485-99c705420785?q=80&w=400' },
-    { id: 'fan', name: 'مراوح', img: 'https://images.unsplash.com/photo-1618941716939-553f3603c5a3?q=80&w=400' },
-    { id: 'blender', name: 'خلاطات', img: 'https://images.unsplash.com/photo-1570222094114-d054a817e56b?q=80&w=400' },
-    { id: 'caps', name: 'كابات', img: 'https://images.unsplash.com/photo-1617033930155-ff7cb0cb5740?q=80&w=400' }
+    { id: 'ac', name: 'تكييفات', img: '/images/ac.jpg' },
+    { id: 'wash', name: 'غسالات', img: '/images/washing.jpg' },
+    { id: 'fridge', name: 'ثلاجات', img: '/images/fridge.jpg' },
+    { id: 'heater', name: 'سخانات', img: '/images/heater.jpg' },
+    { id: 'stove', name: 'بوتجازات', img: '/images/stove.jpg' },
+    { id: 'fan', name: 'مراوح', img: '/images/fan.jpg' },
+    { id: 'blender', name: 'خلاطات', img: '/images/blender.jpg' },
+    { id: 'caps', name: 'كابات', img: '/images/caps.jpg' }
   ];
 
   useEffect(() => {
-    // منع الزوم في الموبايل عند الكتابة
     const meta = document.createElement('meta');
     meta.name = "viewport";
     meta.content = "width=device-width, initial-scale=1, maximum-scale=1, user-scalable=0";
@@ -106,22 +105,17 @@ export default function Dashboard({ user }) {
     setMsgText('');
   };
 
-  // --- وظيفة النشر المحدثة لاختيار القسم ---
   const handlePublish = (e) => {
     e.preventDefault();
     if (!newProduct.image || !newProduct.name || !newProduct.phone || !newProduct.price) {
-        return alert("برجاء إكمال بيانات المنتج في الورشة 🚀");
+        return alert("أكمل بيانات المنتج 🚀");
     }
     setUploading(true);
-    push(ref(db, 'products'), { 
-      ...newProduct, 
-      sellerId: user.uid, 
-      sellerName: user.displayName, 
-      date: new Date().toISOString() 
-    }).then(() => { 
+    push(ref(db, 'products'), { ...newProduct, sellerId: user.uid, sellerName: user.displayName, date: new Date().toISOString() })
+    .then(() => { 
       setUploading(false); setShowModal(false); 
       setNewProduct({ name: '', price: '', desc: '', condition: 'new', image: null, phone: '', category: 'تكييفات' }); 
-      alert("تم النشر في الورشة بنجاح ✅");
+      alert("تم النشر بنجاح ✅");
     });
   };
 
@@ -167,7 +161,7 @@ export default function Dashboard({ user }) {
         </div>
       </header>
 
-      {/* شريط الأقسام المربوطة بالصور 4×6 */}
+      {/* شريط الأقسام ( GitHub Images ) */}
       <div className="bg-white shadow-sm border-b py-4 overflow-x-auto no-scrollbar sticky top-[125px] z-40">
         <div className="container mx-auto px-4 flex gap-4">
           <button onClick={() => setSelectedCategory('all')} className={`flex-shrink-0 w-24 aspect-[4/6] rounded-[1.5rem] flex flex-col items-center justify-center border-2 transition-all ${selectedCategory === 'all' ? 'border-yellow-400 bg-yellow-50' : 'border-zinc-100 bg-zinc-50 opacity-60'}`}>
@@ -175,7 +169,7 @@ export default function Dashboard({ user }) {
           </button>
           {categories.map(cat => (
             <div key={cat.id} onClick={() => setSelectedCategory(cat.name)} className={`flex-shrink-0 w-24 aspect-[4/6] rounded-[1.5rem] relative overflow-hidden cursor-pointer border-2 transition-all ${selectedCategory === cat.name ? 'border-yellow-400 scale-105 shadow-xl' : 'border-transparent opacity-80'}`}>
-              <img src={cat.img} className="w-full h-full object-cover" />
+              <img src={cat.img} className="w-full h-full object-cover" alt={cat.name} />
               <div className="absolute inset-0 bg-gradient-to-t from-black/80 to-transparent flex items-end justify-center p-3">
                 <span className="text-white text-[10px] font-black">{cat.name}</span>
               </div>
@@ -184,7 +178,7 @@ export default function Dashboard({ user }) {
         </div>
       </div>
 
-      <main className="container mx-auto p-4 md:p-8 animate-fadeIn">
+      <main className="container mx-auto p-4 md:p-8">
         
         {/* تبويبات الحالة */}
         <div className="flex justify-center gap-3 mb-8">
@@ -193,8 +187,8 @@ export default function Dashboard({ user }) {
           <button onClick={() => setActiveTab('used')} className={`px-8 py-2.5 rounded-2xl font-black text-xs transition-all ${activeTab === 'used' ? 'bg-zinc-950 text-yellow-400 shadow-lg' : 'bg-white text-zinc-400 border'}`}>مستعمل 🛠️</button>
         </div>
 
-        {/* عرض المنتجات المفلترة */}
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+        {/* عرض المنتجات مع وسائل التواصل الكاملة */}
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 animate-fadeIn">
           {filtered.map(item => (
             <div key={item.id} className="bg-white rounded-[2rem] border overflow-hidden shadow-sm hover:shadow-xl transition-all group">
               <div className="h-60 overflow-hidden relative">
@@ -203,18 +197,26 @@ export default function Dashboard({ user }) {
               </div>
               <div className="p-6">
                 <h3 className="font-black text-sm mb-4 line-clamp-1">{item.name}</h3>
-                <div className="flex justify-between items-center">
+                <div className="flex justify-between items-center mb-4">
                   <div className="font-black text-yellow-600 italic">{item.price} ج.م</div>
-                  <button onClick={() => setMessageModal({ show: true, receiverId: item.sellerId, receiverName: item.sellerName })} className="bg-zinc-950 text-white px-5 py-2.5 rounded-xl font-black text-[10px]">دردشة 💬</button>
                 </div>
+                {user.uid !== item.sellerId ? (
+                  <div className="flex gap-2">
+                    {/* 👈 إعادة وسيلة الاتصال المباشر */}
+                    <a href={`tel:${item.phone}`} className="flex-1 bg-zinc-100 py-3 rounded-xl text-[10px] font-black text-center flex items-center justify-center gap-1">📞 اتصال</a>
+                    <button onClick={() => setMessageModal({ show: true, receiverId: item.sellerId, receiverName: item.sellerName })} className="flex-[2] bg-zinc-950 text-white py-3 rounded-xl font-black text-[10px] flex items-center justify-center gap-1">💬 دردشة</button>
+                  </div>
+                ) : (
+                  <div className="text-center py-2 bg-zinc-50 rounded-xl text-[9px] font-bold text-zinc-400">هذا إعلانك 👑</div>
+                )}
               </div>
             </div>
           ))}
-          {filtered.length === 0 && <div className="col-span-full text-center py-20 text-zinc-400 font-bold">لا يوجد أجهزة في هذا القسم حالياً بالورشة</div>}
+          {filtered.length === 0 && <div className="col-span-full text-center py-20 text-zinc-400 font-bold">لا يوجد أجهزة في هذا القسم حالياً</div>}
         </div>
       </main>
 
-      {/* مودال النشر المطور (تحديد القسم) */}
+      {/* مودال النشر المطور */}
       {showModal && (
         <div className="fixed inset-0 bg-black/80 z-[120] flex items-center justify-center p-4 backdrop-blur-sm">
           <div className="bg-white w-full max-w-lg p-8 rounded-[2.5rem] relative overflow-y-auto max-h-[90vh] animate-slideUp">
@@ -230,21 +232,12 @@ export default function Dashboard({ user }) {
                     }} className="absolute inset-0 w-full h-full opacity-0 cursor-pointer" />
                     {newProduct.image ? <img src={newProduct.image} className="h-32 mx-auto rounded-xl shadow-md" /> : <p className="text-xs text-zinc-400 font-bold">ارفع صورة الجهاز 📸</p>}
                 </div>
-                
-                <input placeholder="اسم الجهاز (مثلاً: ثلاجة شارب 16 قدم)" className="w-full bg-zinc-100 p-4 rounded-xl outline-none font-bold text-sm" value={newProduct.name} onChange={e => setNewProduct({...newProduct, name: e.target.value})} />
-                
-                {/* 👈 قائمة اختيار القسم */}
+                <input placeholder="اسم الجهاز" className="w-full bg-zinc-100 p-4 rounded-xl outline-none font-bold text-sm" value={newProduct.name} onChange={e => setNewProduct({...newProduct, name: e.target.value})} />
                 <div className="flex flex-col gap-2">
-                   <label className="text-[10px] font-black text-zinc-400 pr-2">اختر قسم الجهاز:</label>
-                   <select 
-                     className="w-full bg-zinc-100 p-4 rounded-xl font-bold text-sm outline-none border-none" 
-                     value={newProduct.category} 
-                     onChange={e => setNewProduct({...newProduct, category: e.target.value})}
-                   >
+                   <select className="w-full bg-zinc-100 p-4 rounded-xl font-bold text-sm" value={newProduct.category} onChange={e => setNewProduct({...newProduct, category: e.target.value})}>
                      {categories.map(cat => <option key={cat.id} value={cat.name}>{cat.name}</option>)}
                    </select>
                 </div>
-
                 <div className="flex gap-2">
                    <input placeholder="السعر" className="flex-1 bg-zinc-100 p-4 rounded-xl outline-none font-bold text-sm" value={newProduct.price} onChange={e => setNewProduct({...newProduct, price: e.target.value})} />
                    <select className="bg-zinc-100 p-4 rounded-xl font-bold text-sm" value={newProduct.condition} onChange={e => setNewProduct({...newProduct, condition: e.target.value})}>
@@ -252,53 +245,51 @@ export default function Dashboard({ user }) {
                       <option value="used">مستعمل</option>
                    </select>
                 </div>
-
-                <input placeholder="رقم الموبايل للتواصل" className="w-full bg-zinc-100 p-4 rounded-xl outline-none font-bold text-sm" value={newProduct.phone} onChange={e => setNewProduct({...newProduct, phone: e.target.value})} />
-                
-                <button type="submit" disabled={uploading} className="w-full bg-yellow-400 py-4 rounded-2xl font-black shadow-lg hover:scale-105 active:scale-95 transition-all">
-                    {uploading ? 'جاري الرفع للورشة...' : 'نشر الآن ✅'}
+                <input placeholder="رقم الموبايل" className="w-full bg-zinc-100 p-4 rounded-xl outline-none font-bold text-sm" value={newProduct.phone} onChange={e => setNewProduct({...newProduct, phone: e.target.value})} />
+                <button type="submit" disabled={uploading} className="w-full bg-yellow-400 py-4 rounded-2xl font-black shadow-lg">
+                    {uploading ? 'جاري الرفع...' : 'نشر الآن ✅'}
                 </button>
              </form>
           </div>
         </div>
       )}
 
-      {/* مودال الشات وفويس وعرض الصور كاملة (نفس ميزاتك السابقة) */}
+      {/* مودال الشات وفويس وعرض الصور */}
       {messageModal.show && (
         <div className="fixed inset-0 bg-black/95 z-[110] flex items-center justify-center backdrop-blur-md p-0 md:p-6">
           <div className="bg-white w-full max-w-lg h-full md:h-[85vh] md:rounded-[3rem] flex flex-col shadow-2xl relative">
             <div className="p-5 border-b flex justify-between items-center bg-zinc-50 md:rounded-t-[3rem]">
                <h3 className="font-black text-lg">{messageModal.receiverName}</h3>
-               <button onClick={() => setMessageModal({ show: false, receiverId: '', receiverName: '' })} className="text-4xl text-zinc-300">&times;</button>
+               <button onClick={() => setMessageModal({ show: false, receiverId: '', receiverName: '' })} className="text-4xl text-zinc-300 transition-colors hover:text-black">&times;</button>
             </div>
             <div className="flex-1 overflow-y-auto p-6 space-y-4 flex flex-col">
                {myMessages.filter(m => m.fromId === messageModal.receiverId || m.toId === messageModal.receiverId).sort((a,b) => new Date(a.date) - new Date(b.date)).map((msg, i) => (
                  <div key={i} className={`flex ${msg.fromId === user.uid ? 'justify-end' : 'justify-start'}`}>
                     <div className={`p-4 rounded-2xl shadow-sm max-w-[85%] ${msg.fromId === user.uid ? 'bg-yellow-400 text-black rounded-tr-none' : 'bg-white text-zinc-800 rounded-tl-none border border-gray-100'}`}>
-                       {msg.voice ? <audio src={msg.voice} controls className="h-8 w-44" /> : <p className="text-sm font-bold">{msg.text}</p>}
+                       {msg.voice ? <audio src={msg.voice} controls className="h-8 w-44" /> : <p className="text-sm font-bold leading-relaxed">{msg.text}</p>}
                     </div>
                  </div>
                ))}
             </div>
             <div className="p-5 bg-white border-t md:rounded-b-[3rem] flex gap-2 items-center relative">
-               <button onMouseDown={startRecording} onMouseUp={stopRecording} onTouchStart={startRecording} onTouchEnd={stopRecording} onMouseMove={handleDrag} onTouchMove={handleDrag} className={`p-5 rounded-[1.5rem] transition-all ${isRecording ? (isCancelled ? 'bg-zinc-800 text-red-500 scale-125' : 'bg-red-500 text-white scale-125 shadow-lg') : 'bg-zinc-100 text-zinc-500'}`}>
+               <button onMouseDown={startRecording} onMouseUp={stopRecording} onTouchStart={startRecording} onTouchEnd={stopRecording} onMouseMove={handleDrag} onTouchMove={handleDrag} className={`p-5 rounded-[1.5rem] transition-all ${isRecording ? (isCancelled ? 'bg-zinc-800 text-red-500 scale-125 shadow-lg' : 'bg-red-500 text-white scale-125 shadow-lg') : 'bg-zinc-100 text-zinc-500'}`}>
                  {isCancelled ? '🗑️' : (isRecording ? '🛑' : '🎤')}
                </button>
                <input className="flex-1 bg-zinc-100 p-4 rounded-2xl outline-none font-bold text-xs" placeholder={isRecording ? (isCancelled ? "اترك للحذف" : "اسحب يمين للإلغاء ➡️") : "اكتب رسالة للورشة..."} value={msgText} onChange={(e) => setMsgText(e.target.value)} disabled={isRecording} />
-               <button onClick={sendMsgToSeller} className="bg-zinc-950 text-white px-6 py-4 rounded-2xl font-black text-xs">إرسال</button>
+               <button onClick={sendMsgToSeller} className="bg-zinc-950 text-white px-6 py-4 rounded-2xl font-black text-xs hover:bg-yellow-400 hover:text-black transition-all">إرسال</button>
             </div>
           </div>
         </div>
       )}
 
       {viewImage && (
-        <div className="fixed inset-0 bg-black/98 z-[200] flex items-center justify-center p-4" onClick={() => setViewImage(null)}>
+        <div className="fixed inset-0 bg-black/98 z-[200] flex items-center justify-center p-4 animate-fadeIn" onClick={() => setViewImage(null)}>
            <img src={viewImage} className="max-w-full max-h-full rounded-xl shadow-2xl animate-zoomIn" />
            <button className="absolute top-8 left-8 text-white text-5xl hover:text-yellow-400 transition-colors">&times;</button>
         </div>
       )}
 
-      {/* زر الـ (+) العائم المصلح */}
+      {/* زر الـ (+) العائم */}
       {!['inbox', 'profile'].includes(activeTab) && (
         <button onClick={() => setShowModal(true)} className="fixed bottom-10 left-10 w-20 h-20 bg-yellow-400 text-black rounded-full shadow-[0_10px_40px_rgba(255,215,0,0.4)] text-4xl font-black z-50 border-4 border-white hover:scale-110 active:scale-95 transition-all">+</button>
       )}
