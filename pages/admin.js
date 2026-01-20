@@ -16,12 +16,12 @@ export default function AdminPanel() {
 
   const router = useRouter();
   const ADMIN_EMAIL = "ahmedmkn999@gmail.com";
-  const REQUIRED_USER = "ahmed"; // الاسم المطلوب
-  const REQUIRED_PASS = "0112838183800"; // كلمة السر المطلوبة
+  const REQUIRED_USER = "ahmed"; 
+  const REQUIRED_PASS = "0112838183800"; 
 
   useEffect(() => {
-    // 1. التحقق من وجود جلسة دخول سابقة في المتصفح
-    const savedAuth = localStorage.getItem('volt_admin_auth');
+    // التحقق من وجود جلسة دخول سابقة محفوظة في المتصفح
+    const savedAuth = localStorage.getItem('alwarsha_admin_auth');
     if (savedAuth === 'true') {
       setIsAdminAuthenticated(true);
     }
@@ -55,17 +55,17 @@ export default function AdminPanel() {
   const checkAdminLogin = () => {
     if (loginForm.username === REQUIRED_USER && loginForm.password === REQUIRED_PASS) {
       setIsAdminAuthenticated(true);
-      // حفظ الدخول في المتصفح عشان ميسألش تاني
-      localStorage.setItem('volt_admin_auth', 'true');
+      // حفظ حالة الدخول في المتصفح لتجنب السؤال مرة أخرى
+      localStorage.setItem('alwarsha_admin_auth', 'true');
     } else {
       alert("الاسم أو كلمة السر خطأ! ❌");
     }
   };
 
   const deleteItem = async (path, id) => {
-    if (confirm("⚠️ حذف نهائي من الموقع؟")) {
+    if (confirm("⚠️ هل أنت متأكد من الحذف النهائي من الورشة؟")) {
       await remove(ref(db, `${path}/${id}`));
-      alert("تم الحذف ✅");
+      alert("تم الحذف بنجاح ✅");
     }
   };
 
@@ -73,22 +73,21 @@ export default function AdminPanel() {
     const text = replyText[msgId];
     if (!text) return alert("اكتب الرد أولاً");
     push(ref(db, `messages/${userId}`), {
-      fromName: 'Admin',
-      text: `رد الإدارة: ${text}`,
+      fromName: 'إدارة الورشة',
+      text: `رد الورشة: ${text}`,
       date: new Date().toISOString()
     });
     setReplyText({ ...replyText, [msgId]: '' });
-    alert(`تم الرد على ${userName} ✅`);
+    alert(`تم إرسال الرد إلى ${userName} ✅`);
   };
 
-  if (loading) return <div className="h-screen bg-black flex items-center justify-center text-yellow-400 font-black">جاري التحقق...</div>;
+  if (loading) return <div className="h-screen bg-black flex items-center justify-center text-yellow-400 font-black">جاري الدخول لغرفة التحكم...</div>;
 
-  // شاشة تسجيل الدخول بالاسم والباسورد (تظهر فقط لو مش محفوظين)
   if (user && !isAdminAuthenticated) {
     return (
-      <div className="h-screen bg-black flex flex-col items-center justify-center p-6 font-cairo">
+      <div className="h-screen bg-black flex flex-col items-center justify-center p-6 font-cairo" dir="rtl">
         <div className="bg-zinc-900 p-8 rounded-[2.5rem] border border-yellow-400/20 w-full max-w-sm shadow-2xl">
-          <h2 className="text-2xl font-black text-white mb-6 text-center">بوابة الإدارة 🔐</h2>
+          <h2 className="text-2xl font-black text-white mb-6 text-center">بوابة إدارة الورشة 🔐</h2>
           <div className="space-y-4">
             <input 
               type="text" 
@@ -106,7 +105,7 @@ export default function AdminPanel() {
               onClick={checkAdminLogin}
               className="w-full bg-yellow-400 text-black py-4 rounded-2xl font-black hover:scale-105 transition-all mt-4"
             >
-              تسجيل الدخول
+              دخول اللوحة
             </button>
           </div>
         </div>
@@ -121,12 +120,12 @@ export default function AdminPanel() {
       {/* هيدر لوحة التحكم */}
       <div className="flex flex-col md:flex-row justify-between items-center mb-10 gap-4 border-b border-zinc-800 pb-6">
         <div>
-          <h1 className="text-3xl font-black text-yellow-400 italic tracking-tighter">VOLT CONTROL</h1>
-          <p className="text-zinc-500 text-sm font-bold">مرحباً أحمد، لديك صلاحيات الحذف والرد الكاملة.</p>
+          <h1 className="text-3xl font-black text-yellow-400 italic tracking-tighter uppercase">Al-Warsha Control</h1>
+          <p className="text-zinc-500 text-sm font-bold">مرحباً أحمد، لديك صلاحيات التحكم الكاملة في الورشة.</p>
         </div>
         <div className="flex gap-2">
           <button 
-            onClick={() => { localStorage.removeItem('volt_admin_auth'); window.location.reload(); }}
+            onClick={() => { localStorage.removeItem('alwarsha_admin_auth'); window.location.reload(); }}
             className="px-4 py-2 bg-red-900/20 text-red-500 rounded-xl text-xs font-bold border border-red-900/30"
           >
             قفل اللوحة 🔒
@@ -135,10 +134,9 @@ export default function AdminPanel() {
         </div>
       </div>
 
-      {/* التبويبات */}
       <div className="flex gap-4 mb-8">
-        <button onClick={() => setActiveTab('products')} className={`px-8 py-3 rounded-2xl font-black transition-all ${activeTab === 'products' ? 'bg-yellow-400 text-black shadow-lg shadow-yellow-400/20' : 'bg-zinc-900 text-zinc-500'}`}>المنتجات ({products.length})</button>
-        <button onClick={() => setActiveTab('messages')} className={`px-8 py-3 rounded-2xl font-black transition-all ${activeTab === 'messages' ? 'bg-yellow-400 text-black shadow-lg shadow-yellow-400/20' : 'bg-zinc-900 text-zinc-500'}`}>الرسايل ({messages.length})</button>
+        <button onClick={() => setActiveTab('products')} className={`px-8 py-3 rounded-2xl font-black transition-all ${activeTab === 'products' ? 'bg-yellow-400 text-black shadow-lg shadow-yellow-400/20' : 'bg-zinc-900 text-zinc-500'}`}>منتجات الورشة ({products.length})</button>
+        <button onClick={() => setActiveTab('messages')} className={`px-8 py-3 rounded-2xl font-black transition-all ${activeTab === 'messages' ? 'bg-yellow-400 text-black shadow-lg shadow-yellow-400/20' : 'bg-zinc-900 text-zinc-500'}`}>رسايل الدعم ({messages.length})</button>
       </div>
 
       <div className="bg-zinc-900 rounded-[2.5rem] border border-zinc-800 overflow-hidden shadow-2xl">
@@ -149,7 +147,7 @@ export default function AdminPanel() {
                 <tr>
                   <th className="p-6">المنتج</th>
                   <th className="p-6">السعر</th>
-                  <th className="p-4">البائع</th>
+                  <th className="p-4">بيانات البائع</th>
                   <th className="p-6 text-center">تحكم</th>
                 </tr>
               </thead>
@@ -166,7 +164,7 @@ export default function AdminPanel() {
                        <span className="text-zinc-600">{p.phone}</span>
                     </td>
                     <td className="p-6 text-center">
-                      <button onClick={() => deleteItem('products', p.id)} className="text-red-500 hover:underline">حذف 🗑️</button>
+                      <button onClick={() => deleteItem('products', p.id)} className="text-red-500 hover:underline">حذف نهائي 🗑️</button>
                     </td>
                   </tr>
                 ))}
@@ -177,7 +175,7 @@ export default function AdminPanel() {
 
         {activeTab === 'messages' && (
           <div className="p-6 space-y-4">
-            {messages.length === 0 && <p className="text-center py-10 opacity-30 italic">لا توجد رسائل دعم</p>}
+            {messages.length === 0 && <p className="text-center py-10 opacity-30 italic">لا توجد رسائل دعم للورشة حالياً</p>}
             {messages.map(msg => (
               <div key={msg.id} className="bg-black p-6 rounded-3xl border border-zinc-800 shadow-md">
                 <div className="flex justify-between items-center mb-4">
@@ -188,11 +186,11 @@ export default function AdminPanel() {
                 <div className="flex gap-2">
                   <input 
                     className="flex-1 bg-zinc-900 border border-zinc-800 rounded-xl p-3 text-xs outline-none focus:border-yellow-400"
-                    placeholder="اكتب ردك هنا..."
+                    placeholder="اكتب رد الورشة هنا..."
                     value={replyText[msg.id] || ''}
                     onChange={(e) => setReplyText({...replyText, [msg.id]: e.target.value})}
                   />
-                  <button onClick={() => handleReply(msg.id, msg.userId, msg.userName)} className="bg-yellow-400 text-black px-6 py-3 rounded-xl font-black text-xs">إرسال</button>
+                  <button onClick={() => handleReply(msg.id, msg.userId, msg.userName)} className="bg-yellow-400 text-black px-6 py-3 rounded-xl font-black text-xs">إرسال الرد</button>
                 </div>
               </div>
             ))}
