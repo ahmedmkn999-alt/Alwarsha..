@@ -4,15 +4,19 @@ import { ref, onValue, push, remove } from "firebase/database";
 import { signOut } from "firebase/auth";
 
 export default function Dashboard({ user }) {
+  // --- حالات التحكم ---
+  const [showSplash, setShowSplash] = useState(true); // 1. حالة شاشة الترحيب
   const [activeTab, setActiveTab] = useState('home'); 
   const [selectedCategory, setSelectedCategory] = useState('all'); 
   const [searchTerm, setSearchTerm] = useState('');
   const [showSearchSuggestions, setShowSearchSuggestions] = useState(false);
   
+  // --- حالات البيانات ---
   const [products, setProducts] = useState([]);
   const [myMessages, setMyMessages] = useState([]);
   const [supportMsg, setSupportMsg] = useState('');
   
+  // --- حالات المودالات ---
   const [showModal, setShowModal] = useState(false);
   const [newProduct, setNewProduct] = useState({ 
     name: '', price: '', desc: '', condition: 'new', image: null, phone: '', category: 'تكييفات' 
@@ -22,6 +26,7 @@ export default function Dashboard({ user }) {
   const [messageModal, setMessageModal] = useState({ show: false, receiverId: '', receiverName: '' });
   const [msgText, setMsgText] = useState('');
   
+  // --- نظام الفويس ---
   const [isRecording, setIsRecording] = useState(false);
   const [isCancelled, setIsCancelled] = useState(false);
   const [mediaRecorder, setMediaRecorder] = useState(null);
@@ -40,42 +45,26 @@ export default function Dashboard({ user }) {
   ];
 
   useEffect(() => {
+    // 1. إخفاء شاشة الترحيب بعد 3 ثواني
+    const timer = setTimeout(() => setShowSplash(false), 3000);
+
     const head = document.getElementsByTagName('head')[0];
     
-    // Adsense Code
+    // AdSense
     const adsScript = document.createElement('script');
     adsScript.src = "https://pagead2.googlesyndication.com/pagead/js/adsbygoogle.js?client=ca-pub-7765309726770552";
     adsScript.async = true;
     adsScript.crossOrigin = "anonymous";
     head.appendChild(adsScript);
 
-    // SEO
-    const title = document.createElement('title');
-    title.innerText = "الورشة - قطع غيار وأجهزة كهربائية";
-    head.appendChild(title);
+    // SEO & Meta
+    const title = document.createElement('title'); title.innerText = "الورشة"; head.appendChild(title);
+    const meta = document.createElement('meta'); meta.name = "viewport"; meta.content = "width=device-width, initial-scale=1, maximum-scale=1, user-scalable=0"; head.appendChild(meta);
+    const manifestLink = document.createElement('link'); manifestLink.rel = 'manifest'; manifestLink.href = '/manifest.json'; head.appendChild(manifestLink);
+    const appleIcon = document.createElement('link'); appleIcon.rel = 'apple-touch-icon'; appleIcon.href = '/icon.png.jpg'; head.appendChild(appleIcon);
+    const googleVer = document.createElement('meta'); googleVer.name = "google-site-verification"; googleVer.content = "v_xxxxxxxxxxxxxxxxxxxxxx"; head.appendChild(googleVer);
 
-    const description = document.createElement('meta');
-    description.name = "description";
-    description.content = "الورشة هي المنصة الأولى لبيع وشراء قطع الغيار والأجهزة الكهربائية الجديدة والمستعملة في مصر.";
-    head.appendChild(description);
-
-    const manifestLink = document.createElement('link');
-    manifestLink.rel = 'manifest'; manifestLink.href = '/manifest.json';
-    head.appendChild(manifestLink);
-
-    const appleIcon = document.createElement('link');
-    appleIcon.rel = 'apple-touch-icon'; appleIcon.href = '/icon.png.jpg'; 
-    head.appendChild(appleIcon);
-
-    const googleVer = document.createElement('meta');
-    googleVer.name = "google-site-verification";
-    googleVer.content = "v_xxxxxxxxxxxxxxxxxxxxxx"; 
-    head.appendChild(googleVer);
-
-    const meta = document.createElement('meta');
-    meta.name = "viewport"; meta.content = "width=device-width, initial-scale=1, maximum-scale=1, user-scalable=0";
-    head.appendChild(meta);
-
+    // Fetch Data
     onValue(ref(db, 'products'), (snapshot) => {
       const data = snapshot.val();
       const loaded = data ? Object.entries(data).map(([id, val]) => ({ id, ...val })) : [];
@@ -89,18 +78,30 @@ export default function Dashboard({ user }) {
         setMyMessages(loadedMsgs);
       });
     }
+    return () => clearTimeout(timer);
   }, [user]);
 
   const handleBack = () => { setActiveTab('home'); setSelectedCategory('all'); setSearchTerm(''); };
 
   const handleSearchChange = (e) => {
     setSearchTerm(e.target.value);
-    if (e.target.value !== '') {
-        setSelectedCategory('all'); 
-        setActiveTab('home');
-    }
+    if (e.target.value !== '') { setSelectedCategory('all'); setActiveTab('home'); }
   };
 
+  // --- 3. دالة حذف المحادثة (من عندي فقط) ---
+  const deleteConversation = (otherId) => {
+    if(!window.confirm("هل أنت متأكد من مسح المحادثة؟ لا يمكن التراجع.")) return;
+    
+    // يمسح كل الرسائل اللي بيني وبين الشخص ده من الداتا بيز الخاصة بي
+    myMessages.forEach(msg => {
+        if (msg.fromId === otherId || msg.toId === otherId) {
+            remove(ref(db, `messages/${user.uid}/${msg.id}`));
+        }
+    });
+    alert("تم مسح المحادثة بنجاح 🗑️");
+  };
+
+  // --- Voice & Chat Logic ---
   const startRecording = async (e) => {
     try {
       touchStartPos.current = e.touches ? e.touches[0].clientX : e.clientX;
@@ -128,8 +129,7 @@ export default function Dashboard({ user }) {
   const handleDrag = (e) => {
     if (!isRecording) return;
     const currentPos = e.touches ? e.touches[0].clientX : e.clientX;
-    if (currentPos - touchStartPos.current > 70) setIsCancelled(true);
-    else setIsCancelled(false);
+    if (currentPos - touchStartPos.current > 70) setIsCancelled(true); else setIsCancelled(false);
   };
 
   const stopRecording = () => { if (mediaRecorder) { mediaRecorder.stop(); setIsRecording(false); } };
@@ -147,31 +147,39 @@ export default function Dashboard({ user }) {
     if (!newProduct.image || !newProduct.name || !newProduct.phone || !newProduct.price) return alert("أكمل البيانات 🚀");
     setUploading(true);
     push(ref(db, 'products'), { ...newProduct, sellerId: user.uid, sellerName: user.displayName, date: new Date().toISOString() })
-    .then(() => { 
-      setUploading(false); setShowModal(false); 
-      setNewProduct({ name: '', price: '', desc: '', condition: 'new', image: null, phone: '', category: 'تكييفات' }); 
-      alert("تم النشر بنجاح ✅");
-    });
+    .then(() => { setUploading(false); setShowModal(false); setNewProduct({ name: '', price: '', desc: '', condition: 'new', image: null, phone: '', category: 'تكييفات' }); alert("تم النشر بنجاح ✅"); });
   };
 
-  // ✅ التعديل هنا: البحث الآن يشمل اسم المنتج واسم القسم
+  // 2. فصل رسائل الدعم عن رسائل الزبائن
+  const adminMessages = myMessages.filter(m => m.fromId === 'Admin' || m.toId === 'Admin');
+  const customerMessages = myMessages.filter(m => m.fromId !== 'Admin' && m.toId !== 'Admin');
+
+  // Filter Logic
   const filtered = products.filter(p => {
     const normalize = (str) => str?.toLowerCase().replace(/[أإآ]/g, 'ا').replace(/[ة]/g, 'ه').trim() || "";
     const search = normalize(searchTerm);
     const name = normalize(p.name);
-    const categoryName = normalize(p.category); // اسم القسم (مثل خلاطات)
-    
-    // الشرط: هل الاسم فيه الكلمة؟ أو هل القسم فيه الكلمة؟
+    const categoryName = normalize(p.category);
     const matchSearch = name.includes(search) || categoryName.includes(search);
     const matchCategory = selectedCategory === 'all' || p.category === selectedCategory;
     const matchTab = activeTab === 'home' || p.condition === activeTab;
-    
     return matchSearch && matchCategory && matchTab;
   });
 
   return (
     <div className="min-h-screen bg-zinc-50 pb-24 font-cairo select-none" dir="rtl">
       
+      {/* 1. شاشة الترحيب (Splash Screen) */}
+      {showSplash && (
+        <div className="fixed inset-0 bg-black z-[999] flex flex-col items-center justify-center animate-fadeOut" style={{animationDelay: '2.5s', animationFillMode: 'forwards'}}>
+           <div className="w-24 h-24 bg-yellow-400 rounded-full flex items-center justify-center border-4 border-white shadow-[0_0_50px_rgba(255,215,0,0.5)] animate-bounce">
+              <span className="text-black text-5xl font-black italic">W</span>
+           </div>
+           <h1 className="text-yellow-400 font-black text-3xl mt-6 tracking-tighter uppercase italic">AL-WARSHA</h1>
+           <p className="text-zinc-500 text-sm mt-2 font-bold tracking-widest">EST. 2026</p>
+        </div>
+      )}
+
       <header className="bg-zinc-950 text-white shadow-xl sticky top-0 z-50 border-b-2 border-yellow-400">
         <div className="container mx-auto px-4 py-3 flex justify-between items-center">
           <div className="flex items-center gap-3">
@@ -186,9 +194,11 @@ export default function Dashboard({ user }) {
             </div>
           </div>
           <div className="flex items-center gap-3">
-             <button onClick={() => setActiveTab('support')} className={`p-2.5 rounded-xl transition-all ${activeTab === 'support' ? 'bg-yellow-400 text-black' : 'bg-zinc-900 text-zinc-500'}`}>🎧</button>
+             <button onClick={() => setActiveTab('support')} className={`p-2.5 rounded-xl transition-all ${activeTab === 'support' ? 'bg-yellow-400 text-black' : 'bg-zinc-900 text-zinc-500'}`}>
+                🎧 {adminMessages.some(m => m.fromId === 'Admin') && <span className="absolute top-1 right-1 bg-red-600 w-2 h-2 rounded-full"></span>}
+             </button>
              <button onClick={() => setActiveTab('inbox')} className={`p-2.5 rounded-xl relative transition-all ${activeTab === 'inbox' ? 'bg-yellow-400 text-black' : 'bg-zinc-900 text-zinc-500'}`}>
-                📩 {myMessages.length > 0 && <span className="absolute -top-1 -right-1 bg-red-600 text-white text-[9px] rounded-full w-4 h-4 flex items-center justify-center border-2 border-zinc-950 font-black">!</span>}
+                📩 {customerMessages.length > 0 && <span className="absolute -top-1 -right-1 bg-red-600 text-white text-[9px] rounded-full w-4 h-4 flex items-center justify-center border-2 border-zinc-950 font-black">!</span>}
              </button>
              <button onClick={() => setActiveTab('profile')} className={`active:scale-90 transition-transform ${activeTab === 'profile' ? 'ring-2 ring-yellow-400 p-0.5 rounded-full' : ''}`}>
                 <img src={user.photoURL} className="w-9 h-9 rounded-full border border-zinc-700 object-cover" alt="profile" />
@@ -210,6 +220,7 @@ export default function Dashboard({ user }) {
         )}
       </header>
 
+      {/* الشريط الأفقي للأقسام (يظهر فقط في الرئيسية) */}
       {activeTab === 'home' && (
         <div className="bg-white shadow-sm border-b py-4 overflow-x-auto no-scrollbar sticky top-[125px] z-40 animate-slideDown">
           <div className="container mx-auto px-4 flex gap-4">
@@ -229,6 +240,8 @@ export default function Dashboard({ user }) {
       )}
 
       <main className="container mx-auto p-4 md:p-8 animate-fadeIn">
+        
+        {/* الصفحة الرئيسية */}
         {activeTab === 'home' && (
           <>
             <div className="flex justify-center gap-3 mb-8">
@@ -256,42 +269,74 @@ export default function Dashboard({ user }) {
                   ))}
                 </div>
             ) : (
-                <div className="text-center py-20 opacity-50">
-                    <p className="text-xl font-black">لا توجد نتائج بحث 🔍</p>
-                    <p className="text-sm">جرب كلمة تانية..</p>
-                </div>
+                <div className="text-center py-20 opacity-50"><p className="text-xl font-black">لا توجد نتائج بحث 🔍</p></div>
             )}
           </>
         )}
 
-        {/* باقي الكود (Inbox, Support, Profile, Modals) */}
+        {/* 2. صندوق الوارد (فقط رسائل الزبائن) */}
         {activeTab === 'inbox' && (
           <div className="max-w-2xl mx-auto space-y-4">
             <h2 className="text-2xl font-black mb-6 text-right pr-3 border-r-4 border-yellow-400 italic">بريد الورشة 📩</h2>
-            {[...new Map(myMessages.map(m => [m.fromId === user.uid ? m.toId : m.fromId, m])).values()].map(chat => (
-              <div key={chat.id} onClick={() => setMessageModal({ show: true, receiverId: chat.fromId === user.uid ? chat.toId : chat.fromId, receiverName: chat.fromName })} className="bg-white p-6 rounded-[2rem] border flex items-center gap-5 cursor-pointer hover:border-yellow-400 transition-all shadow-sm">
-                <div className="w-14 h-14 rounded-full bg-zinc-950 text-yellow-400 flex items-center justify-center font-black text-xl">{chat.fromName[0]}</div>
-                <div className="flex-1 text-right">
-                  <h4 className="font-black text-zinc-900">{chat.fromId === 'Admin' ? 'إدارة الورشة ⚡' : chat.fromName}</h4>
-                  <p className="text-xs text-zinc-400 line-clamp-1 mt-1">{chat.text || "🎤 رسالة صوتية"}</p>
-                </div>
-              </div>
-            ))}
+            {[...new Map(customerMessages.map(m => [m.fromId === user.uid ? m.toId : m.fromId, m])).values()].length === 0 ? (
+                <p className="text-center text-zinc-400 py-10 font-bold">صندوق الوارد فارغ 📭</p>
+            ) : (
+                [...new Map(customerMessages.map(m => [m.fromId === user.uid ? m.toId : m.fromId, m])).values()].map(chat => {
+                    const otherId = chat.fromId === user.uid ? chat.toId : chat.fromId;
+                    return (
+                        <div key={chat.id} className="flex gap-2 items-center">
+                            <button onClick={() => deleteConversation(otherId)} className="bg-red-50 text-red-500 w-12 h-20 rounded-2xl flex items-center justify-center shadow-sm active:scale-95 transition-all">🗑️</button>
+                            <div onClick={() => setMessageModal({ show: true, receiverId: otherId, receiverName: chat.fromName })} className="flex-1 bg-white p-6 rounded-[2rem] border flex items-center gap-5 cursor-pointer hover:border-yellow-400 transition-all shadow-sm">
+                                <div className="w-14 h-14 rounded-full bg-zinc-950 text-yellow-400 flex items-center justify-center font-black text-xl">{chat.fromName[0]}</div>
+                                <div className="flex-1 text-right">
+                                    <h4 className="font-black text-zinc-900">{chat.fromName}</h4>
+                                    <p className="text-xs text-zinc-400 line-clamp-1 mt-1">{chat.text || "🎤 رسالة صوتية"}</p>
+                                </div>
+                            </div>
+                        </div>
+                    );
+                })
+            )}
           </div>
         )}
 
+        {/* 2. قسم الدعم الفني (دردشة منفصلة مع الإدارة) */}
         {activeTab === 'support' && (
-          <div className="max-w-md mx-auto bg-white p-8 rounded-[2.5rem] border text-center shadow-lg">
-            <h2 className="text-xl font-black mb-4 italic">دعم الورشة 🎧</h2>
-            <textarea className="w-full bg-zinc-50 border rounded-2xl p-4 text-sm mb-4 outline-none min-h-[150px] font-bold" placeholder="اكتب مشكلتك هنا..." value={supportMsg} onChange={(e) => setSupportMsg(e.target.value)} />
-            <button onClick={() => {
-                if(!supportMsg) return;
-                push(ref(db, 'support'), { userId: user.uid, userName: user.displayName, msg: supportMsg, date: new Date().toISOString() });
-                setSupportMsg(''); alert("تم الإرسال للدعم ✅");
-            }} className="w-full bg-yellow-400 text-black py-4 rounded-2xl font-black shadow-lg">إرسال للمراجعة</button>
+          <div className="max-w-md mx-auto space-y-6">
+            <h2 className="text-2xl font-black text-center italic">الدعم الفني المباشر 🎧</h2>
+            
+            {/* عرض محادثة الدعم السابقة */}
+            <div className="bg-white p-4 rounded-[2.5rem] border shadow-inner h-[300px] overflow-y-auto flex flex-col gap-3 no-scrollbar">
+                {adminMessages.length > 0 ? (
+                    adminMessages.sort((a,b) => new Date(a.date) - new Date(b.date)).map((msg, i) => (
+                        <div key={i} className={`p-3 rounded-2xl text-xs font-bold max-w-[80%] ${msg.fromId === user.uid ? 'bg-yellow-400 self-end text-black' : 'bg-zinc-100 self-start text-zinc-800'}`}>
+                            {msg.text || "🎤 رسالة صوتية"}
+                        </div>
+                    ))
+                ) : (
+                    <p className="text-center text-zinc-400 my-auto text-xs">لا توجد رسائل سابقة مع الدعم</p>
+                )}
+            </div>
+
+            <div className="bg-white p-6 rounded-[2.5rem] border text-center shadow-lg">
+                <textarea className="w-full bg-zinc-50 border rounded-2xl p-4 text-sm mb-4 outline-none min-h-[100px] font-bold" placeholder="اكتب مشكلتك هنا..." value={supportMsg} onChange={(e) => setSupportMsg(e.target.value)} />
+                <button onClick={() => {
+                    if(!supportMsg) return;
+                    const msgData = { userId: user.uid, userName: user.displayName, msg: supportMsg, date: new Date().toISOString() };
+                    // إرسال لـ node الدعم
+                    push(ref(db, 'support'), msgData);
+                    // إرسال كرسالة عادية للإدارة عشان تظهر في الشات فوق
+                    const chatData = { fromName: user.displayName, fromId: user.uid, text: supportMsg, date: new Date().toISOString() };
+                    push(ref(db, `messages/Admin`), chatData); 
+                    push(ref(db, `messages/${user.uid}`), { ...chatData, toId: 'Admin' });
+
+                    setSupportMsg(''); alert("تم الإرسال للدعم ✅");
+                }} className="w-full bg-zinc-950 text-white py-4 rounded-2xl font-black shadow-lg">إرسال للمدير</button>
+            </div>
           </div>
         )}
 
+        {/* الملف الشخصي */}
         {activeTab === 'profile' && (
           <div className="max-w-xl mx-auto text-right">
             <div className="bg-white rounded-[2.5rem] p-8 border mb-8 text-center shadow-sm">
@@ -315,7 +360,7 @@ export default function Dashboard({ user }) {
         )}
       </main>
 
-      {/* --- المودالات --- */}
+      {/* --- المودالات (النشر والشات والصور) نفس السابق --- */}
       {showModal && (
         <div className="fixed inset-0 bg-black/80 z-[120] flex items-center justify-center p-4 backdrop-blur-sm">
           <div className="bg-white w-full max-w-lg p-8 rounded-[2.5rem] relative overflow-y-auto max-h-[90vh] shadow-2xl animate-slideUp">
