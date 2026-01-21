@@ -27,7 +27,6 @@ export default function Dashboard({ user }) {
   const [mediaRecorder, setMediaRecorder] = useState(null);
   const touchStartPos = useRef(0);
 
-  // القائمة بأسماء الملفات كما هي عندك بالضبط
   const categories = [
     { id: 'parts', name: 'قطع غيار', img: '/parts.jpg' },
     { id: 'heater', name: 'سخانات', img: '/heater (1).jpg' },
@@ -43,15 +42,14 @@ export default function Dashboard({ user }) {
   useEffect(() => {
     const head = document.getElementsByTagName('head')[0];
     
-    // --- 💰 كود إعلانات جوجل (AdSense) الجديد ---
+    // Adsense
     const adsScript = document.createElement('script');
     adsScript.src = "https://pagead2.googlesyndication.com/pagead/js/adsbygoogle.js?client=ca-pub-7765309726770552";
     adsScript.async = true;
     adsScript.crossOrigin = "anonymous";
     head.appendChild(adsScript);
-    // ----------------------------------------------
 
-    // SEO Codes
+    // SEO
     const title = document.createElement('title');
     title.innerText = "الورشة - قطع غيار وأجهزة كهربائية";
     head.appendChild(title);
@@ -61,7 +59,6 @@ export default function Dashboard({ user }) {
     description.content = "الورشة هي المنصة الأولى لبيع وشراء قطع الغيار والأجهزة الكهربائية الجديدة والمستعملة في مصر.";
     head.appendChild(description);
 
-    // Manifest & Icons (بنفس الأسماء الموجودة في ملفاتك)
     const manifestLink = document.createElement('link');
     manifestLink.rel = 'manifest'; manifestLink.href = '/manifest.json';
     head.appendChild(manifestLink);
@@ -70,10 +67,9 @@ export default function Dashboard({ user }) {
     appleIcon.rel = 'apple-touch-icon'; appleIcon.href = '/icon.png.jpg'; 
     head.appendChild(appleIcon);
 
-    // Google Verification (الكود الخاص بك)
     const googleVer = document.createElement('meta');
     googleVer.name = "google-site-verification";
-    googleVer.content = "v_xxxxxxxxxxxxxxxxxxxxxx"; // (جوجل هيقرأ ملف الـ HTML اللي رفعته تلقائي)
+    googleVer.content = "v_xxxxxxxxxxxxxxxxxxxxxx"; 
     head.appendChild(googleVer);
 
     const meta = document.createElement('meta');
@@ -95,8 +91,16 @@ export default function Dashboard({ user }) {
     }
   }, [user]);
 
-  // --- باقي الدوال (نفس الكود السابق تماماً) ---
   const handleBack = () => { setActiveTab('home'); setSelectedCategory('all'); setSearchTerm(''); };
+
+  // دالة بحث ذكية: بتلغي الفلاتر لما تكتب
+  const handleSearchChange = (e) => {
+    setSearchTerm(e.target.value);
+    if (e.target.value !== '') {
+        setSelectedCategory('all'); // الغاء فلتر القسم
+        setActiveTab('home');      // الغاء فلتر جديد/مستعمل
+    }
+  };
 
   const startRecording = async (e) => {
     try {
@@ -151,10 +155,17 @@ export default function Dashboard({ user }) {
     });
   };
 
+  // تحسين منطق الفلترة ليكون أكثر مرونة
   const filtered = products.filter(p => {
-    const matchSearch = p.name?.toLowerCase().includes(searchTerm.toLowerCase());
+    // توحيد الحروف (نورماليزيشن) عشان البحث يكون دقيق (مثلا: "أ" زي "ا")
+    const normalize = (str) => str?.toLowerCase().replace(/[أإآ]/g, 'ا').replace(/[ة]/g, 'ه') || "";
+    const search = normalize(searchTerm);
+    const name = normalize(p.name);
+    
+    const matchSearch = name.includes(search);
     const matchCategory = selectedCategory === 'all' || p.category === selectedCategory;
     const matchTab = activeTab === 'home' || p.condition === activeTab;
+    
     return matchSearch && matchCategory && matchTab;
   });
 
@@ -186,7 +197,8 @@ export default function Dashboard({ user }) {
         </div>
         {activeTab === 'home' && (
           <div className="container mx-auto px-4 pb-3 relative animate-fadeIn">
-              <input className="w-full bg-zinc-900 border-none rounded-2xl p-3 text-xs text-white outline-none focus:ring-1 focus:ring-yellow-400 font-bold text-center" placeholder="ابحث في الورشة..." value={searchTerm} onFocus={() => setShowSearchSuggestions(true)} onChange={(e) => setSearchTerm(e.target.value)} />
+              {/* تم ربط البحث بالدالة الجديدة handleSearchChange */}
+              <input className="w-full bg-zinc-900 border-none rounded-2xl p-3 text-xs text-white outline-none focus:ring-1 focus:ring-yellow-400 font-bold text-center" placeholder="ابحث في الورشة..." value={searchTerm} onFocus={() => setShowSearchSuggestions(true)} onChange={handleSearchChange} />
               {showSearchSuggestions && (
                 <div className="absolute top-full left-4 right-4 bg-zinc-900 rounded-2xl mt-2 p-2 shadow-2xl z-[60] border border-zinc-800 max-h-48 overflow-y-auto">
                   {categories.map(cat => (
@@ -225,27 +237,35 @@ export default function Dashboard({ user }) {
               <button onClick={() => setActiveTab('new')} className={`px-8 py-2.5 rounded-2xl font-black text-xs transition-all ${activeTab === 'new' ? 'bg-zinc-950 text-yellow-400 shadow-lg' : 'bg-white text-zinc-400 border'}`}>جديد ✨</button>
               <button onClick={() => setActiveTab('used')} className={`px-8 py-2.5 rounded-2xl font-black text-xs transition-all ${activeTab === 'used' ? 'bg-zinc-950 text-yellow-400 shadow-lg' : 'bg-white text-zinc-400 border'}`}>مستعمل 🛠️</button>
             </div>
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
-              {filtered.map(item => (
-                <div key={item.id} className="bg-white rounded-[2rem] border overflow-hidden shadow-sm hover:shadow-xl transition-all group">
-                  <div className="h-60 overflow-hidden relative">
-                    <img src={item.image} className="w-full h-full object-cover cursor-pointer group-hover:scale-105 transition-transform duration-700" onClick={() => setViewImage(item.image)} />
-                    <div className="absolute top-3 right-3 bg-yellow-400 text-black px-3 py-1 rounded-xl font-black text-[9px] shadow-md">{item.category}</div>
-                  </div>
-                  <div className="p-6 text-right">
-                    <h3 className="font-black text-sm mb-4 line-clamp-1">{item.name} <span className="text-[10px] text-zinc-300 font-normal">({item.condition === 'new' ? 'جديد' : 'مستعمل'})</span></h3>
-                    <div className="font-black text-yellow-600 italic mb-4 text-lg">{item.price} ج.م</div>
-                    <div className="flex gap-2">
-                       <a href={`tel:${item.phone}`} className="flex-1 bg-zinc-100 py-3 rounded-xl text-[10px] font-black text-center border">📞 اتصال</a>
-                       <button onClick={() => setMessageModal({ show: true, receiverId: item.sellerId, receiverName: item.sellerName })} className="flex-[2] bg-zinc-950 text-white py-3 rounded-xl font-black text-[10px]">💬 دردشة</button>
+            {filtered.length > 0 ? (
+                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
+                  {filtered.map(item => (
+                    <div key={item.id} className="bg-white rounded-[2rem] border overflow-hidden shadow-sm hover:shadow-xl transition-all group">
+                      <div className="h-60 overflow-hidden relative">
+                        <img src={item.image} className="w-full h-full object-cover cursor-pointer group-hover:scale-105 transition-transform duration-700" onClick={() => setViewImage(item.image)} />
+                        <div className="absolute top-3 right-3 bg-yellow-400 text-black px-3 py-1 rounded-xl font-black text-[9px] shadow-md">{item.category}</div>
+                      </div>
+                      <div className="p-6 text-right">
+                        <h3 className="font-black text-sm mb-4 line-clamp-1">{item.name} <span className="text-[10px] text-zinc-300 font-normal">({item.condition === 'new' ? 'جديد' : 'مستعمل'})</span></h3>
+                        <div className="font-black text-yellow-600 italic mb-4 text-lg">{item.price} ج.م</div>
+                        <div className="flex gap-2">
+                           <a href={`tel:${item.phone}`} className="flex-1 bg-zinc-100 py-3 rounded-xl text-[10px] font-black text-center border">📞 اتصال</a>
+                           <button onClick={() => setMessageModal({ show: true, receiverId: item.sellerId, receiverName: item.sellerName })} className="flex-[2] bg-zinc-950 text-white py-3 rounded-xl font-black text-[10px]">💬 دردشة</button>
+                        </div>
+                      </div>
                     </div>
-                  </div>
+                  ))}
                 </div>
-              ))}
-            </div>
+            ) : (
+                <div className="text-center py-20 opacity-50">
+                    <p className="text-xl font-black">لا توجد نتائج بحث 🔍</p>
+                    <p className="text-sm">جرب كلمة تانية..</p>
+                </div>
+            )}
           </>
         )}
 
+        {/* باقي الكود (Inbox, Support, Profile, Modals) كما هو بدون تغيير */}
         {activeTab === 'inbox' && (
           <div className="max-w-2xl mx-auto space-y-4">
             <h2 className="text-2xl font-black mb-6 text-right pr-3 border-r-4 border-yellow-400 italic">بريد الورشة 📩</h2>
