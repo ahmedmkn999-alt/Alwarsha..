@@ -5,7 +5,7 @@ import { signOut } from "firebase/auth";
 
 export default function Dashboard({ user }) {
   // --- حالات التحكم ---
-  const [showSplash, setShowSplash] = useState(true); // شاشة الترحيب
+  const [showSplash, setShowSplash] = useState(true);
   const [activeTab, setActiveTab] = useState('home'); 
   const [selectedCategory, setSelectedCategory] = useState('all'); 
   const [searchTerm, setSearchTerm] = useState('');
@@ -45,26 +45,23 @@ export default function Dashboard({ user }) {
   ];
 
   useEffect(() => {
-    // 1. إخفاء شاشة الترحيب بعد 3.5 ثانية (زودت الوقت شوية عشان يلحق يقرأ اسمه)
     const timer = setTimeout(() => setShowSplash(false), 3500);
 
     const head = document.getElementsByTagName('head')[0];
     
-    // AdSense
+    // AdSense & SEO
     const adsScript = document.createElement('script');
     adsScript.src = "https://pagead2.googlesyndication.com/pagead/js/adsbygoogle.js?client=ca-pub-7765309726770552";
     adsScript.async = true;
     adsScript.crossOrigin = "anonymous";
     head.appendChild(adsScript);
 
-    // SEO & Meta
     const title = document.createElement('title'); title.innerText = "الورشة"; head.appendChild(title);
     const meta = document.createElement('meta'); meta.name = "viewport"; meta.content = "width=device-width, initial-scale=1, maximum-scale=1, user-scalable=0"; head.appendChild(meta);
     const manifestLink = document.createElement('link'); manifestLink.rel = 'manifest'; manifestLink.href = '/manifest.json'; head.appendChild(manifestLink);
     const appleIcon = document.createElement('link'); appleIcon.rel = 'apple-touch-icon'; appleIcon.href = '/icon.png.jpg'; head.appendChild(appleIcon);
     const googleVer = document.createElement('meta'); googleVer.name = "google-site-verification"; googleVer.content = "v_xxxxxxxxxxxxxxxxxxxxxx"; head.appendChild(googleVer);
 
-    // Fetch Data
     onValue(ref(db, 'products'), (snapshot) => {
       const data = snapshot.val();
       const loaded = data ? Object.entries(data).map(([id, val]) => ({ id, ...val })) : [];
@@ -81,14 +78,24 @@ export default function Dashboard({ user }) {
     return () => clearTimeout(timer);
   }, [user]);
 
+  // ✅ تصليح الفلاتر: لما تختار جديد/مستعمل يصفر باقي الفلاتر عشان يجيب نتايج
+  const handleTabChange = (tab) => {
+    setActiveTab(tab);
+    setSelectedCategory('all'); // الغاء تحديد القسم
+    setSearchTerm('');          // الغاء البحث
+  };
+
   const handleBack = () => { setActiveTab('home'); setSelectedCategory('all'); setSearchTerm(''); };
 
   const handleSearchChange = (e) => {
     setSearchTerm(e.target.value);
-    if (e.target.value !== '') { setSelectedCategory('all'); setActiveTab('home'); }
+    if (e.target.value !== '') { 
+        setSelectedCategory('all'); 
+        setActiveTab('home'); 
+        setShowSearchSuggestions(true);
+    }
   };
 
-  // دالة مسح المحادثة
   const deleteConversation = (otherId) => {
     if(!window.confirm("هل أنت متأكد من مسح المحادثة؟ لا يمكن التراجع.")) return;
     myMessages.forEach(msg => {
@@ -99,7 +106,6 @@ export default function Dashboard({ user }) {
     alert("تم مسح المحادثة بنجاح 🗑️");
   };
 
-  // --- Voice & Chat Logic ---
   const startRecording = async (e) => {
     try {
       touchStartPos.current = e.touches ? e.touches[0].clientX : e.clientX;
@@ -156,16 +162,17 @@ export default function Dashboard({ user }) {
     const search = normalize(searchTerm);
     const name = normalize(p.name);
     const categoryName = normalize(p.category);
+    
     const matchSearch = name.includes(search) || categoryName.includes(search);
     const matchCategory = selectedCategory === 'all' || p.category === selectedCategory;
     const matchTab = activeTab === 'home' || p.condition === activeTab;
+    
     return matchSearch && matchCategory && matchTab;
   });
 
   return (
     <div className="min-h-screen bg-zinc-50 pb-24 font-cairo select-none" dir="rtl">
       
-      {/* 1. شاشة الترحيب (Splash Screen) مع الاسم */}
       {showSplash && (
         <div className="fixed inset-0 bg-black z-[999] flex flex-col items-center justify-center animate-fadeOut" style={{animationDelay: '3s', animationFillMode: 'forwards'}}>
            <div className="w-24 h-24 bg-yellow-400 rounded-full flex items-center justify-center border-4 border-white shadow-[0_0_50px_rgba(255,215,0,0.5)] animate-bounce">
@@ -173,7 +180,6 @@ export default function Dashboard({ user }) {
            </div>
            <h1 className="text-yellow-400 font-black text-3xl mt-6 tracking-tighter uppercase italic">AL-WARSHA</h1>
            <p className="text-zinc-500 text-sm mt-2 font-bold tracking-widest">EST. 2026</p>
-           {/* التعديل الجديد: رسالة ترحيب بالاسم */}
            <div className="mt-10 text-center animate-pulse">
               <p className="text-white text-xl font-bold">مرحباً بك يا</p>
               <p className="text-yellow-400 text-2xl font-black mt-2">{user.displayName} ❤️</p>
@@ -209,13 +215,21 @@ export default function Dashboard({ user }) {
         {activeTab === 'home' && (
           <div className="container mx-auto px-4 pb-3 relative animate-fadeIn">
               <input className="w-full bg-zinc-900 border-none rounded-2xl p-3 text-xs text-white outline-none focus:ring-1 focus:ring-yellow-400 font-bold text-center" placeholder="ابحث في الورشة..." value={searchTerm} onFocus={() => setShowSearchSuggestions(true)} onChange={handleSearchChange} />
+              
+              {/* ✅ تصليح البحث: القائمة بتتقفل لما تضغط بره، وزرار الإغلاق فوق */}
               {showSearchSuggestions && (
-                <div className="absolute top-full left-4 right-4 bg-zinc-900 rounded-2xl mt-2 p-2 shadow-2xl z-[60] border border-zinc-800 max-h-48 overflow-y-auto">
-                  {categories.map(cat => (
-                    <button key={cat.id} className="w-full text-right p-3 text-sm hover:bg-zinc-800 rounded-xl transition-colors font-bold" onClick={() => {setSearchTerm(cat.name); setShowSearchSuggestions(false);}}>🔍 {cat.name}</button>
-                  ))}
-                  <button onClick={() => setShowSearchSuggestions(false)} className="w-full p-2 text-[10px] text-yellow-400 font-black border-t border-zinc-800 mt-2">إغلاق ×</button>
-                </div>
+                <>
+                  <div className="fixed inset-0 z-[55] cursor-pointer" onClick={() => setShowSearchSuggestions(false)}></div>
+                  <div className="absolute top-full left-4 right-4 bg-zinc-900 rounded-2xl mt-2 p-2 shadow-2xl z-[60] border border-zinc-800 max-h-60 overflow-y-auto">
+                    <div className="flex justify-between items-center mb-2 px-2 border-b border-zinc-800 pb-2 sticky top-0 bg-zinc-900">
+                       <span className="text-[10px] text-zinc-400">اقتراحات البحث</span>
+                       <button onClick={() => setShowSearchSuggestions(false)} className="text-yellow-400 font-black text-xs bg-zinc-800 px-3 py-1 rounded-lg">إغلاق ×</button>
+                    </div>
+                    {categories.map(cat => (
+                      <button key={cat.id} className="w-full text-right p-3 text-sm hover:bg-zinc-800 rounded-xl transition-colors font-bold text-white" onClick={() => {setSearchTerm(cat.name); setShowSearchSuggestions(false);}}>🔍 {cat.name}</button>
+                    ))}
+                  </div>
+                </>
               )}
           </div>
         )}
@@ -244,9 +258,10 @@ export default function Dashboard({ user }) {
         {activeTab === 'home' && (
           <>
             <div className="flex justify-center gap-3 mb-8">
-              <button onClick={() => setActiveTab('home')} className={`px-8 py-2.5 rounded-2xl font-black text-xs transition-all ${activeTab === 'home' ? 'bg-zinc-950 text-yellow-400 shadow-lg' : 'bg-white text-zinc-400 border'}`}>الكل</button>
-              <button onClick={() => setActiveTab('new')} className={`px-8 py-2.5 rounded-2xl font-black text-xs transition-all ${activeTab === 'new' ? 'bg-zinc-950 text-yellow-400 shadow-lg' : 'bg-white text-zinc-400 border'}`}>جديد ✨</button>
-              <button onClick={() => setActiveTab('used')} className={`px-8 py-2.5 rounded-2xl font-black text-xs transition-all ${activeTab === 'used' ? 'bg-zinc-950 text-yellow-400 shadow-lg' : 'bg-white text-zinc-400 border'}`}>مستعمل 🛠️</button>
+              {/* ✅ استخدام الدالة الجديدة handleTabChange */}
+              <button onClick={() => handleTabChange('home')} className={`px-8 py-2.5 rounded-2xl font-black text-xs transition-all ${activeTab === 'home' ? 'bg-zinc-950 text-yellow-400 shadow-lg' : 'bg-white text-zinc-400 border'}`}>الكل</button>
+              <button onClick={() => handleTabChange('new')} className={`px-8 py-2.5 rounded-2xl font-black text-xs transition-all ${activeTab === 'new' ? 'bg-zinc-950 text-yellow-400 shadow-lg' : 'bg-white text-zinc-400 border'}`}>جديد ✨</button>
+              <button onClick={() => handleTabChange('used')} className={`px-8 py-2.5 rounded-2xl font-black text-xs transition-all ${activeTab === 'used' ? 'bg-zinc-950 text-yellow-400 shadow-lg' : 'bg-white text-zinc-400 border'}`}>مستعمل 🛠️</button>
             </div>
             {filtered.length > 0 ? (
                 <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
@@ -268,12 +283,14 @@ export default function Dashboard({ user }) {
                   ))}
                 </div>
             ) : (
-                <div className="text-center py-20 opacity-50"><p className="text-xl font-black">لا توجد نتائج بحث 🔍</p></div>
+                <div className="text-center py-20 opacity-50">
+                    <p className="text-xl font-black">لا توجد نتائج بحث 🔍</p>
+                    <button onClick={() => handleTabChange('home')} className="mt-4 text-yellow-500 font-bold underline">عرض كل المنتجات</button>
+                </div>
             )}
           </>
         )}
 
-        {/* صندوق الوارد (مع زر الحذف) */}
         {activeTab === 'inbox' && (
           <div className="max-w-2xl mx-auto space-y-4">
             <h2 className="text-2xl font-black mb-6 text-right pr-3 border-r-4 border-yellow-400 italic">بريد الورشة 📩</h2>
@@ -299,7 +316,7 @@ export default function Dashboard({ user }) {
           </div>
         )}
 
-        {/* قسم الدعم الفني المنفصل */}
+        {/* باقي الكود (الدعم والبروفايل والمودالات) كما هو بدون تغيير */}
         {activeTab === 'support' && (
           <div className="max-w-md mx-auto space-y-6">
             <h2 className="text-2xl font-black text-center italic">الدعم الفني المباشر 🎧</h2>
@@ -331,7 +348,6 @@ export default function Dashboard({ user }) {
           </div>
         )}
 
-        {/* الملف الشخصي */}
         {activeTab === 'profile' && (
           <div className="max-w-xl mx-auto text-right">
             <div className="bg-white rounded-[2.5rem] p-8 border mb-8 text-center shadow-sm">
