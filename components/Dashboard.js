@@ -31,7 +31,7 @@ export default function Dashboard({ user }) {
   const [mediaRecorder, setMediaRecorder] = useState(null);
   const touchStartPos = useRef(0);
 
-  // الأقسام مربوطة بالصور المحلية في مجلد public
+  // قائمة الأقسام مع الصور المحلية المرفوعة على GitHub
   const categories = [
     { id: 'parts', name: 'قطع غيار', img: '/parts.jpg' },
     { id: 'heater', name: 'سخانات', img: '/Heater (1).jpg' },
@@ -47,7 +47,22 @@ export default function Dashboard({ user }) {
   useEffect(() => {
     const head = document.getElementsByTagName('head')[0];
     
-    // ربط ملف الـ manifest والأيقونة للتثبيت على الشاشة
+    // 🔍 1. إضافة كود السيو (SEO) لجوجل لظهور الموقع في البحث
+    const title = document.createElement('title');
+    title.innerText = "الورشة - قطع غيار وأجهزة كهربائية";
+    head.appendChild(title);
+
+    const description = document.createElement('meta');
+    description.name = "description";
+    description.content = "الورشة هي منصتك الأولى لبيع وشراء قطع الغيار والأجهزة الكهربائية الجديدة والمستعملة في مصر.";
+    head.appendChild(description);
+
+    const keywords = document.createElement('meta');
+    keywords.name = "keywords";
+    keywords.content = "الورشة, قطع غيار, أجهزة كهربائية, تكييفات, غسالات, مستعمل, جديد, مصر, احمد";
+    head.appendChild(keywords);
+
+    // 📱 2. ربط الـ manifest والأيقونة لتثبيت الموقع كـ App
     const manifestLink = document.createElement('link');
     manifestLink.rel = 'manifest'; manifestLink.href = '/manifest.json';
     head.appendChild(manifestLink);
@@ -56,13 +71,13 @@ export default function Dashboard({ user }) {
     appleIcon.rel = 'apple-touch-icon'; appleIcon.href = '/icon.png';
     head.appendChild(appleIcon);
 
-    // منع الزوم التلقائي
+    // 3. منع الزوم التلقائي في الموبايل
     const meta = document.createElement('meta');
     meta.name = "viewport"; 
     meta.content = "width=device-width, initial-scale=1, maximum-scale=1, user-scalable=0";
     head.appendChild(meta);
 
-    // جلب المنتجات
+    // 4. جلب المنتجات والرسائل من Firebase
     onValue(ref(db, 'products'), (snapshot) => {
       const data = snapshot.val();
       const loaded = [];
@@ -70,7 +85,6 @@ export default function Dashboard({ user }) {
       setProducts(loaded.reverse()); 
     });
 
-    // جلب الرسائل (بما فيها ردود الإدارة)
     if (user?.uid) {
       onValue(ref(db, `messages/${user.uid}`), (snapshot) => {
         const data = snapshot.val();
@@ -82,17 +96,12 @@ export default function Dashboard({ user }) {
   }, [user]);
 
   // --- دوال التحكم المساعدة ---
-  const handleBack = () => {
-    setActiveTab('home');
-    setSelectedCategory('all');
-    setSearchTerm('');
-  };
+  const handleBack = () => { setActiveTab('home'); setSelectedCategory('all'); setSearchTerm(''); };
 
   const handleSupportSend = () => {
-    if (!supportMsg.trim()) return alert("يرجى كتابة رسالتك");
-    push(ref(db, 'support'), {
-      userId: user.uid, userName: user.displayName, msg: supportMsg, date: new Date().toISOString()
-    }).then(() => { setSupportMsg(''); alert("تم إرسال طلبك للإدارة ✅"); });
+    if (!supportMsg.trim()) return alert("اكتب مشكلتك أولاً");
+    push(ref(db, 'support'), { userId: user.uid, userName: user.displayName, msg: supportMsg, date: new Date().toISOString() })
+    .then(() => { setSupportMsg(''); alert("تم الإرسال للدعم ✅"); });
   };
 
   // --- وظائف الفويس والشات ---
@@ -115,7 +124,7 @@ export default function Dashboard({ user }) {
       recorder.start();
       setMediaRecorder(recorder);
       setIsRecording(true);
-    } catch (err) { alert("فعل الميكروفون 🎤"); }
+    } catch (err) { alert("يرجى تفعيل الميكروفون 🎤"); }
   };
 
   const handleDrag = (e) => {
@@ -143,7 +152,7 @@ export default function Dashboard({ user }) {
 
   const handlePublish = (e) => {
     e.preventDefault();
-    if (!newProduct.image || !newProduct.name || !newProduct.phone || !newProduct.price) return alert("أكمل البيانات 🚀");
+    if (!newProduct.image || !newProduct.name || !newProduct.phone || !newProduct.price) return alert("البيانات ناقصة 🚀");
     setUploading(true);
     push(ref(db, 'products'), { ...newProduct, sellerId: user.uid, sellerName: user.displayName, date: new Date().toISOString() })
     .then(() => { 
@@ -166,10 +175,9 @@ export default function Dashboard({ user }) {
       {/* Header مع اللوجو الموحد وزر الرجوع */}
       <header className="bg-zinc-950 text-white shadow-xl sticky top-0 z-50 border-b-2 border-yellow-400">
         <div className="container mx-auto px-4 py-3 flex justify-between items-center">
-          
           <div className="flex items-center gap-3">
             {activeTab !== 'home' && (
-              <button onClick={handleBack} className="bg-zinc-900 p-2 rounded-xl text-yellow-400 font-black text-[10px] active:scale-90 transition-all">⬅️ رجوع</button>
+              <button onClick={handleBack} className="bg-zinc-900 p-2 rounded-xl text-yellow-400 font-black text-xs transition-all active:scale-90">⬅️ رجوع</button>
             )}
             <div className="flex items-center gap-2 cursor-pointer group" onClick={handleBack}>
               <div className="w-10 h-10 bg-yellow-400 rounded-full flex items-center justify-center border-2 border-black">
@@ -178,10 +186,9 @@ export default function Dashboard({ user }) {
               <div className="text-xl font-black italic text-yellow-400 tracking-tighter">الورشة</div>
             </div>
           </div>
-
           <div className="flex items-center gap-3">
-             <button onClick={() => setActiveTab('support')} className={`p-2.5 rounded-xl transition-all ${activeTab === 'support' ? 'bg-yellow-400 text-black' : 'bg-zinc-900 text-zinc-500'}`}>🎧</button>
-             <button onClick={() => setActiveTab('inbox')} className={`p-2.5 rounded-xl relative transition-all ${activeTab === 'inbox' ? 'bg-yellow-400 text-black' : 'bg-zinc-900 text-zinc-500'}`}>
+             <button onClick={() => setActiveTab('support')} className={`p-2.5 rounded-xl transition-all ${activeTab === 'support' ? 'bg-yellow-400 text-black shadow-lg shadow-yellow-400/20' : 'bg-zinc-900 text-zinc-500'}`}>🎧</button>
+             <button onClick={() => setActiveTab('inbox')} className={`p-2.5 rounded-xl relative transition-all ${activeTab === 'inbox' ? 'bg-yellow-400 text-black shadow-lg shadow-yellow-400/20' : 'bg-zinc-900 text-zinc-500'}`}>
                 📩 {myMessages.length > 0 && <span className="absolute -top-1 -right-1 bg-red-600 text-white text-[9px] rounded-full w-4 h-4 flex items-center justify-center border-2 border-zinc-950 font-black">!</span>}
              </button>
              <button onClick={() => setActiveTab('profile')} className={`active:scale-90 transition-transform ${activeTab === 'profile' ? 'ring-2 ring-yellow-400 p-0.5 rounded-full' : ''}`}>
@@ -189,10 +196,9 @@ export default function Dashboard({ user }) {
              </button>
           </div>
         </div>
-        
         {activeTab === 'home' && (
           <div className="container mx-auto px-4 pb-3 relative animate-fadeIn">
-              <input className="w-full bg-zinc-900 border-none rounded-2xl p-3 text-xs text-white outline-none focus:ring-1 focus:ring-yellow-400 font-bold text-center" placeholder="ابحث في الورشة..." value={searchTerm} onFocus={() => setShowSearchSuggestions(true)} onChange={(e) => setSearchTerm(e.target.value)} />
+              <input className="w-full bg-zinc-900 border-none rounded-2xl p-3 text-xs text-white outline-none focus:ring-1 focus:ring-yellow-400 font-bold text-center shadow-inner" placeholder="ابحث في الورشة..." value={searchTerm} onFocus={() => setShowSearchSuggestions(true)} onChange={(e) => setSearchTerm(e.target.value)} />
               {showSearchSuggestions && (
                 <div className="absolute top-full left-4 right-4 bg-zinc-900 rounded-2xl mt-2 p-2 shadow-2xl z-[60] border border-zinc-800 max-h-48 overflow-y-auto">
                   {categories.map(cat => (
@@ -224,7 +230,7 @@ export default function Dashboard({ user }) {
         </div>
       )}
 
-      <main className="container mx-auto p-4 md:p-8">
+      <main className="container mx-auto p-4 md:p-8 animate-fadeIn">
         
         {/* الصفحة الرئيسية */}
         {activeTab === 'home' && (
@@ -234,7 +240,7 @@ export default function Dashboard({ user }) {
               <button onClick={() => setActiveTab('new')} className={`px-8 py-2.5 rounded-2xl font-black text-xs transition-all ${activeTab === 'new' ? 'bg-zinc-950 text-yellow-400 shadow-lg' : 'bg-white text-zinc-400 border'}`}>جديد ✨</button>
               <button onClick={() => setActiveTab('used')} className={`px-8 py-2.5 rounded-2xl font-black text-xs transition-all ${activeTab === 'used' ? 'bg-zinc-950 text-yellow-400 shadow-lg' : 'bg-white text-zinc-400 border'}`}>مستعمل 🛠️</button>
             </div>
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8 animate-fadeIn">
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
               {filtered.map(item => (
                 <div key={item.id} className="bg-white rounded-[2rem] border overflow-hidden shadow-sm hover:shadow-xl transition-all group">
                   <div className="h-60 overflow-hidden relative">
@@ -275,29 +281,29 @@ export default function Dashboard({ user }) {
           </div>
         )}
 
-        {/* دعم الورشة (Support) */}
+        {/* دعم الورشة */}
         {activeTab === 'support' && (
           <div className="max-w-md mx-auto bg-white p-8 rounded-[2.5rem] border text-center shadow-lg animate-fadeIn">
-            <h2 className="text-xl font-black mb-4 italic">دعم الورشة 🎧</h2>
+            <h2 className="text-xl font-black mb-4 italic italic">دعم الورشة 🎧</h2>
             <textarea className="w-full bg-zinc-50 border rounded-2xl p-4 text-sm mb-4 outline-none min-h-[150px] font-bold" placeholder="اكتب مشكلتك هنا وسيرد عليك المدير في البريد..." value={supportMsg} onChange={(e) => setSupportMsg(e.target.value)} />
             <button onClick={handleSupportSend} className="w-full bg-yellow-400 text-black py-4 rounded-2xl font-black shadow-lg hover:scale-[1.02] transition-transform">إرسال للمراجعة</button>
           </div>
         )}
 
-        {/* الملف الشخصي (Profile) */}
+        {/* الملف الشخصي */}
         {activeTab === 'profile' && (
           <div className="max-w-xl mx-auto text-right animate-fadeIn">
             <div className="bg-white rounded-[2.5rem] p-8 border mb-8 text-center shadow-sm">
-              <img src={user.photoURL} className="w-24 h-24 rounded-full mx-auto border-4 border-yellow-400 mb-4 object-cover" alt="user" />
+              <img src={user.photoURL} className="w-24 h-24 rounded-full mx-auto border-4 border-yellow-400 mb-4 object-cover shadow-lg" alt="user" />
               <h2 className="text-xl font-black mb-2">{user.displayName}</h2>
               <button onClick={() => signOut(auth).then(() => window.location.reload())} className="bg-red-50 text-red-600 px-8 py-2 rounded-xl font-black text-xs border border-red-100 hover:bg-red-100 transition-all">تسجيل الخروج</button>
             </div>
-            <h3 className="font-black mb-4 pr-3 border-r-4 border-yellow-400 italic">إعلاناتي</h3>
+            <h3 className="font-black mb-4 pr-3 border-r-4 border-yellow-400 italic">إعلاناتي في الورشة</h3>
             <div className="grid grid-cols-1 gap-4">
                 {products.filter(p => p.sellerId === user.uid).map(item => (
                     <div key={item.id} className="bg-white p-4 rounded-3xl border flex items-center justify-between shadow-sm">
                         <div className="flex items-center gap-4">
-                            <img src={item.image} className="w-16 h-16 rounded-2xl object-cover" alt={item.name} />
+                            <img src={item.image} className="w-16 h-16 rounded-2xl object-cover shadow-sm" alt={item.name} />
                             <span className="font-black text-sm">{item.name}</span>
                         </div>
                         <button onClick={() => remove(ref(db, `products/${item.id}`))} className="text-red-500 p-2 hover:bg-red-50 rounded-full transition-all">🗑️</button>
@@ -308,7 +314,7 @@ export default function Dashboard({ user }) {
         )}
       </main>
 
-      {/* مودال نشر جديد */}
+      {/* مودال نشر جهاز جديد */}
       {showModal && (
         <div className="fixed inset-0 bg-black/80 z-[120] flex items-center justify-center p-4 backdrop-blur-sm">
           <div className="bg-white w-full max-w-lg p-8 rounded-[2.5rem] relative overflow-y-auto max-h-[90vh] shadow-2xl animate-slideUp">
@@ -322,7 +328,7 @@ export default function Dashboard({ user }) {
                        reader.onloadend = () => setNewProduct({ ...newProduct, image: reader.result });
                        reader.readAsDataURL(file);
                     }} className="absolute inset-0 w-full h-full opacity-0 cursor-pointer" />
-                    {newProduct.image ? <img src={newProduct.image} className="h-36 mx-auto rounded-xl shadow-md object-contain" /> : <p className="text-xs text-zinc-400 py-8 font-black">ارفع صورة الجهاز 📸</p>}
+                    {newProduct.image ? <img src={newProduct.image} className="h-40 mx-auto rounded-xl shadow-md object-contain" /> : <p className="text-xs text-zinc-400 py-10 font-black italic">ارفع صورة الجهاز 📸</p>}
                 </div>
                 <input placeholder="اسم الجهاز" className="w-full bg-zinc-100 p-4 rounded-xl outline-none text-sm font-bold" value={newProduct.name} onChange={e => setNewProduct({...newProduct, name: e.target.value})} />
                 <div className="flex flex-col gap-1">
@@ -338,7 +344,7 @@ export default function Dashboard({ user }) {
                    </select>
                 </div>
                 <input placeholder="رقم الهاتف" className="w-full bg-zinc-100 p-4 rounded-xl outline-none font-bold text-sm" value={newProduct.phone} onChange={e => setNewProduct({...newProduct, phone: e.target.value})} />
-                <button type="submit" disabled={uploading} className="w-full bg-yellow-400 py-4 rounded-2xl font-black shadow-lg">{uploading ? 'جاري النشر..' : 'نشر الجهاز الآن ✅'}</button>
+                <button type="submit" disabled={uploading} className="w-full bg-yellow-400 py-4 rounded-2xl font-black shadow-lg active:scale-95 transition-transform">نشر الجهاز الآن ✅</button>
              </form>
           </div>
         </div>
@@ -349,10 +355,7 @@ export default function Dashboard({ user }) {
         <div className="fixed inset-0 bg-black/95 z-[150] flex items-center justify-center p-0 md:p-6 backdrop-blur-md">
           <div className="bg-white w-full max-w-lg h-full md:h-[85vh] md:rounded-[3rem] flex flex-col shadow-2xl relative animate-slideUp">
             <div className="p-6 border-b flex justify-between items-center bg-zinc-50 md:rounded-t-[3rem]">
-               <div className="flex items-center gap-3">
-                 <div className="w-10 h-10 rounded-full bg-zinc-950 text-yellow-400 flex items-center justify-center font-black">{messageModal.receiverName[0]}</div>
-                 <h3 className="font-black text-lg">{messageModal.receiverName === 'Admin' ? 'إدارة الورشة ⚡' : messageModal.receiverName}</h3>
-               </div>
+               <h3 className="font-black text-lg">{messageModal.receiverName === 'Admin' ? 'إدارة الورشة ⚡' : messageModal.receiverName}</h3>
                <button onClick={() => setMessageModal({ show: false, receiverId: '', receiverName: '' })} className="text-4xl text-zinc-300 hover:text-black">&times;</button>
             </div>
             <div className="flex-1 overflow-y-auto p-6 space-y-4 flex flex-col no-scrollbar">
@@ -388,7 +391,7 @@ export default function Dashboard({ user }) {
 
       {/* التوقيع الذهبي */}
       <footer className="text-center pb-10 pt-4 opacity-40">
-          <p className="text-[12px] text-zinc-400 font-black uppercase tracking-[0.4em] italic italic">AHMED • EST. 2026</p>
+          <p className="text-[12px] text-zinc-400 font-black uppercase tracking-[0.4em] italic italic font-cairo">AHMED • EST. 2026</p>
       </footer>
 
     </div>
