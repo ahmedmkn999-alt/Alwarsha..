@@ -10,17 +10,15 @@ export default function Dashboard({ user }) {
   const [selectedCategory, setSelectedCategory] = useState('all'); 
   const [searchTerm, setSearchTerm] = useState('');
   const [showSearchSuggestions, setShowSearchSuggestions] = useState(false);
-  const [isBanned, setIsBanned] = useState(false); // حالة الحظر للمستخدم الحالي
-  const [showBannedChat, setShowBannedChat] = useState(false); // شات التظلم للمحظورين
+  const [isBanned, setIsBanned] = useState(false); // كشف الحظر
+  const [showBannedChat, setShowBannedChat] = useState(false); // شات المحظورين
   
-  // --- 2. حالات البيانات ---
+  // --- 2. البيانات ---
   const [products, setProducts] = useState([]);
   const [myMessages, setMyMessages] = useState([]);
-  const [reports, setReports] = useState([]); 
-  const [allUsers, setAllUsers] = useState([]); // قائمة كل المستخدمين للأدمن
   const [supportMsg, setSupportMsg] = useState('');
   
-  // --- 3. تفضيلات المستخدم ---
+  // --- 3. تفضيلات الشات (تثبيت/قراءة) ---
   const [readChats, setReadChats] = useState([]); 
   const [pinnedChats, setPinnedChats] = useState([]); 
   const [optionsModal, setOptionsModal] = useState({ show: false, targetId: '', targetName: '' });
@@ -35,18 +33,13 @@ export default function Dashboard({ user }) {
   const [viewImage, setViewImage] = useState(null);
   const [messageModal, setMessageModal] = useState({ show: false, receiverId: '', receiverName: '' });
   const [msgText, setMsgText] = useState('');
-  const [chatImage, setChatImage] = useState(null); // صورة داخل الشات
+  const [chatImage, setChatImage] = useState(null); // صورة الشات
   
-  // --- 5. نظام الصوت ---
+  // --- 5. الصوت ---
   const [isRecording, setIsRecording] = useState(false);
   const [isCancelled, setIsCancelled] = useState(false);
   const [mediaRecorder, setMediaRecorder] = useState(null);
   const touchStartPos = useRef(0);
-
-  // ⚠️ هام: تحديد من هو الأدمن (غير الإيميل ده بإيميلك الحقيقي عشان تكون أنت بس الأدمن)
-  // حالياً خليتها true عشان تظهرلك اللوحة وتجربها
-  const isAdmin = true; 
-  // const isAdmin = user.email === "admin@gmail.com"; 
 
   const categories = [
     { id: 'parts', name: 'قطع غيار', img: '/parts.jpg' },
@@ -60,20 +53,20 @@ export default function Dashboard({ user }) {
     { id: 'caps', name: 'كابات', img: '/caps.jpg' }
   ];
 
-  // --- 6. جلب البيانات (Effect) ---
+  // --- 6. التأثيرات (Effects) ---
   useEffect(() => {
     const timer = setTimeout(() => setShowSplash(false), 3500);
     const head = document.getElementsByTagName('head')[0];
     
-    // AdSense & SEO
+    // AdSense
     const adsScript = document.createElement('script');
     adsScript.src = "https://pagead2.googlesyndication.com/pagead/js/adsbygoogle.js?client=ca-pub-7765309726770552";
     adsScript.async = true;
     adsScript.crossOrigin = "anonymous";
     head.appendChild(adsScript);
 
-    // تسجيل دخول المستخدم في قاعدة البيانات (عشان يبان في لوحة الأدمن)
     if(user?.uid) {
+        // تحديث بيانات المستخدم (عشان الأدمن يشوفه)
         update(ref(db, `users/${user.uid}`), {
             name: user.displayName,
             email: user.email,
@@ -82,9 +75,16 @@ export default function Dashboard({ user }) {
             lastSeen: new Date().toISOString()
         });
         
-        // مراقبة هل تم حظري؟
+        // 🚫 مراقبة الحظر لحظياً
         onValue(ref(db, `users/${user.uid}/banned`), (snapshot) => {
             setIsBanned(snapshot.val() === true);
+        });
+
+        // جلب الرسائل
+        onValue(ref(db, `messages/${user.uid}`), (snapshot) => {
+            const data = snapshot.val();
+            const loadedMsgs = data ? Object.entries(data).map(([id, val]) => ({ id, ...val })) : [];
+            setMyMessages(loadedMsgs);
         });
     }
 
@@ -95,35 +95,12 @@ export default function Dashboard({ user }) {
       setProducts(loaded.reverse()); 
     });
 
-    // جلب الرسائل
-    if (user?.uid) {
-      onValue(ref(db, `messages/${user.uid}`), (snapshot) => {
-        const data = snapshot.val();
-        const loadedMsgs = data ? Object.entries(data).map(([id, val]) => ({ id, ...val })) : [];
-        setMyMessages(loadedMsgs);
-      });
-    }
-
-    // جلب بيانات الأدمن (المستخدمين والبلاغات)
-    if (isAdmin) {
-        onValue(ref(db, 'reports'), (snapshot) => {
-            const data = snapshot.val();
-            const loaded = data ? Object.entries(data).map(([id, val]) => ({ id, ...val })) : [];
-            setReports(loaded.reverse());
-        });
-        onValue(ref(db, 'users'), (snapshot) => {
-            const data = snapshot.val();
-            const loaded = data ? Object.entries(data).map(([id, val]) => ({ id, ...val })) : [];
-            setAllUsers(loaded);
-        });
-    }
-
     return () => clearTimeout(timer);
   }, [user]);
 
-  // --- 7. دوال التحكم ---
+  // --- 7. الوظائف ---
   
-  // التحكم بالضغط المطول (Options)
+  // الضغط المطول (للبلاغ أو التثبيت)
   const handleTouchStart = (id, name) => {
     longPressTimer.current = setTimeout(() => {
       setOptionsModal({ show: true, targetId: id, targetName: name });
@@ -131,39 +108,33 @@ export default function Dashboard({ user }) {
   };
   const handleTouchEnd = () => { if (longPressTimer.current) clearTimeout(longPressTimer.current); };
 
-  // تنفيذ البلاغ
+  // إرسال بلاغ للأدمن
   const handleReport = () => {
-    push(ref(db, 'reports'), {
-      reporterId: user.uid, reporterName: user.displayName,
-      reportedUserId: optionsModal.targetId, reportedUserName: optionsModal.targetName,
-      date: new Date().toISOString(), reason: "بلاغ من التطبيق"
-    });
-    alert("تم الإبلاغ 🚨"); setOptionsModal({ ...optionsModal, show: false });
+    if(confirm(`هل تريد الإبلاغ عن ${optionsModal.targetName} للإدارة؟`)) {
+        push(ref(db, 'reports'), {
+          reporterId: user.uid, reporterName: user.displayName,
+          reportedUserId: optionsModal.targetId, reportedUserName: optionsModal.targetName,
+          date: new Date().toISOString(), reason: "بلاغ من داخل الشات"
+        });
+        alert("تم إرسال البلاغ بنجاح 🚨"); 
+    }
+    setOptionsModal({ ...optionsModal, show: false });
   };
 
-  // تنفيذ التثبيت
+  // تثبيت المحادثة
   const handlePin = () => {
     if (pinnedChats.includes(optionsModal.targetId)) setPinnedChats(pinnedChats.filter(id => id !== optionsModal.targetId));
     else setPinnedChats([...pinnedChats, optionsModal.targetId]);
     setOptionsModal({ ...optionsModal, show: false });
   };
 
-  // أدوات الحذف
+  // حذف المحادثة
   const deleteConversation = (otherId) => {
-    if(!window.confirm("مسح المحادثة؟")) return;
+    if(!window.confirm("هل أنت متأكد من مسح المحادثة؟")) return;
     myMessages.forEach(msg => { if (msg.fromId === otherId || msg.toId === otherId) remove(ref(db, `messages/${user.uid}/${msg.id}`)); });
   };
-  const dismissReport = (reportId) => { if(window.confirm("إغلاق البلاغ؟")) remove(ref(db, `reports/${reportId}`)); };
-  const deletePostAsAdmin = (productId) => { if(window.confirm("حذف المنشور؟")) remove(ref(db, `products/${productId}`)); };
-  
-  // تبديل الحظر (Ban/Unban)
-  const toggleBan = (targetUid, currentStatus) => {
-      if(window.confirm(currentStatus ? "فك الحظر؟" : "حظر المستخدم؟ 🚫")) {
-          update(ref(db, `users/${targetUid}`), { banned: !currentStatus });
-      }
-  };
 
-  // --- 8. إرسال الرسائل والصور ---
+  // إرسال رسالة (صورة أو نص)
   const sendMsgToSeller = () => {
     if(!msgText.trim() && !chatImage) return;
     const msgData = { 
@@ -176,6 +147,7 @@ export default function Dashboard({ user }) {
     setMsgText(''); setChatImage(null);
   };
 
+  // تسجيل الصوت
   const startRecording = async (e) => {
     try {
       touchStartPos.current = e.touches ? e.touches[0].clientX : e.clientX;
@@ -200,6 +172,7 @@ export default function Dashboard({ user }) {
   const handleDrag = (e) => { if (!isRecording) return; if ((e.touches ? e.touches[0].clientX : e.clientX) - touchStartPos.current > 70) setIsCancelled(true); else setIsCancelled(false); };
   const stopRecording = () => { if (mediaRecorder) { mediaRecorder.stop(); setIsRecording(false); } };
 
+  // نشر منتج
   const handlePublish = (e) => {
     e.preventDefault();
     if (!newProduct.image || !newProduct.name || !newProduct.phone || !newProduct.price) return alert("أكمل البيانات 🚀");
@@ -208,7 +181,7 @@ export default function Dashboard({ user }) {
     .then(() => { setUploading(false); setShowModal(false); setNewProduct({ name: '', price: '', desc: '', condition: 'new', image: null, phone: '', category: 'تكييفات' }); alert("تم النشر بنجاح ✅"); });
   };
 
-  // --- 9. الفلاتر والبحث ---
+  // الفلترة والبحث
   const handleTabChange = (tab) => { setActiveTab(tab); setSelectedCategory('all'); setSearchTerm(''); };
   const handleSearchChange = (e) => { setSearchTerm(e.target.value); if (e.target.value !== '') { setSelectedCategory('all'); setActiveTab('home'); setShowSearchSuggestions(true); } };
   
@@ -222,7 +195,7 @@ export default function Dashboard({ user }) {
   const unreadCount = uniqueConversations.filter(c => c.fromId !== user.uid && !readChats.includes(c.fromId)).length;
 
   // ----------------------------------------------------------------------------------
-  // 💀💀 الشاشة السوداء (للمستخدم المحظور) 💀💀
+  // 🚫🚫 شاشة الحظر (Black Screen) 🚫🚫
   if (isBanned) {
       return (
           <div className="fixed inset-0 bg-black z-[9999] flex flex-col items-center justify-center p-6 text-center animate-fadeIn font-cairo" dir="rtl">
@@ -231,17 +204,16 @@ export default function Dashboard({ user }) {
               </div>
               <h1 className="text-red-600 text-4xl font-black mb-4 tracking-tighter italic">AL-WARSHA</h1>
               <h2 className="text-white text-2xl font-bold mb-2">تم حظرك يا {user.displayName} 🚫</h2>
-              <p className="text-zinc-600 text-xs mb-10 font-mono tracking-widest bg-zinc-900 p-2 rounded">USER_ID: {user.uid}</p>
+              <p className="text-zinc-600 text-xs mb-10 font-mono tracking-widest bg-zinc-900 p-2 rounded">ID: {user.uid.slice(0,6)}</p>
               
               <div className="bg-zinc-900 p-6 rounded-[2.5rem] border border-zinc-800 w-full max-w-sm mb-6">
-                  <p className="text-zinc-400 text-sm leading-relaxed">لقد خالفت قوانين المنصة. تم تعليق حسابك بشكل كامل. يمكنك التظلم لدى الإدارة.</p>
+                  <p className="text-zinc-400 text-sm leading-relaxed">تم تعليق حسابك لمخالفة القوانين. يمكنك التواصل مع الإدارة لتقديم تظلم.</p>
               </div>
 
               <button onClick={() => setShowBannedChat(true)} className="bg-white text-black px-10 py-4 rounded-full font-black text-lg hover:bg-yellow-400 transition-all flex items-center gap-2 shadow-xl animate-bounce">
                  💬 تواصل مع الإدارة
               </button>
 
-              {/* شات التظلم للمحظور */}
               {showBannedChat && (
                 <div className="fixed inset-0 bg-black z-[10000] flex items-center justify-center p-0 md:p-6 animate-slideUp">
                    <div className="bg-white w-full max-w-lg h-full md:rounded-[3rem] flex flex-col overflow-hidden">
@@ -250,6 +222,7 @@ export default function Dashboard({ user }) {
                          <button onClick={() => setShowBannedChat(false)} className="text-3xl text-zinc-500 hover:text-white">&times;</button>
                       </div>
                       <div className="flex-1 overflow-y-auto p-6 space-y-4 flex flex-col no-scrollbar bg-zinc-50">
+                         {/* عرض رسائل الأدمن والمستخدم فقط */}
                          {myMessages.filter(m => m.fromId === 'Admin' || m.toId === 'Admin').map((msg, i) => (
                             <div key={i} className={`flex ${msg.fromId === user.uid ? 'justify-end' : 'justify-start'}`}>
                                <div className={`p-4 rounded-[1.5rem] max-w-[85%] shadow-sm ${msg.fromId === user.uid ? 'bg-zinc-900 text-white rounded-tr-none' : 'bg-white text-black border rounded-tl-none'}`}>
@@ -275,13 +248,12 @@ export default function Dashboard({ user }) {
           </div>
       );
   }
-
   // ----------------------------------------------------------------------------------
 
   return (
     <div className="min-h-screen bg-zinc-50 pb-24 font-cairo select-none" dir="rtl">
       
-      {/* Splash Screen */}
+      {/* شاشة الترحيب */}
       {showSplash && (
         <div className="fixed inset-0 bg-black z-[999] flex flex-col items-center justify-center animate-fadeOut" style={{animationDelay: '3s', animationFillMode: 'forwards'}}>
            <div className="w-24 h-24 bg-yellow-400 rounded-full flex items-center justify-center border-4 border-white shadow-[0_0_50px_rgba(255,215,0,0.5)] animate-bounce"><span className="text-black text-5xl font-black italic">W</span></div>
@@ -290,6 +262,7 @@ export default function Dashboard({ user }) {
         </div>
       )}
 
+      {/* الهيدر */}
       <header className="bg-zinc-950 text-white shadow-xl sticky top-0 z-50 border-b-2 border-yellow-400">
         <div className="container mx-auto px-4 py-3 flex justify-between items-center">
           <div className="flex items-center gap-3">
@@ -300,14 +273,7 @@ export default function Dashboard({ user }) {
             </div>
           </div>
           <div className="flex items-center gap-3">
-             {/* أزرار الأدمن */}
-             {isAdmin && (
-               <>
-                 <button onClick={() => setActiveTab('users')} className={`p-2.5 rounded-xl transition-all ${activeTab === 'users' ? 'bg-yellow-400 text-black' : 'bg-zinc-900 text-zinc-500'}`}>👥</button>
-                 <button onClick={() => setActiveTab('manage_posts')} className={`p-2.5 rounded-xl transition-all ${activeTab === 'manage_posts' ? 'bg-yellow-400 text-black' : 'bg-zinc-900 text-zinc-500'}`}>📦</button>
-                 <button onClick={() => setActiveTab('reports')} className={`p-2.5 rounded-xl transition-all relative ${activeTab === 'reports' ? 'bg-red-600 text-white' : 'bg-zinc-900 text-zinc-500'}`}>🚨 {reports.length > 0 && <span className="absolute -top-1 -right-1 bg-yellow-400 text-black text-[9px] rounded-full w-4 h-4 flex items-center justify-center border-2 border-zinc-950 font-black">{reports.length}</span>}</button>
-               </>
-             )}
+             <button onClick={() => setActiveTab('support')} className={`p-2.5 rounded-xl transition-all ${activeTab === 'support' ? 'bg-yellow-400 text-black' : 'bg-zinc-900 text-zinc-500'}`}>🎧</button>
              <button onClick={() => setActiveTab('inbox')} className={`p-2.5 rounded-xl relative transition-all ${activeTab === 'inbox' ? 'bg-yellow-400 text-black' : 'bg-zinc-900 text-zinc-500'}`}>
                 📩 {unreadCount > 0 && <span className="absolute -top-1 -right-1 bg-red-600 text-white text-[9px] rounded-full w-4 h-4 flex items-center justify-center border-2 border-zinc-950 font-black animate-pulse">{unreadCount}</span>}
              </button>
@@ -348,62 +314,7 @@ export default function Dashboard({ user }) {
           </>
         )}
 
-        {/* --- 👥 إدارة المستخدمين (الأدمن) --- */}
-        {activeTab === 'users' && isAdmin && (
-          <div className="max-w-3xl mx-auto space-y-6">
-            <h2 className="text-2xl font-black mb-6 text-right pr-3 border-r-4 border-blue-600 italic">إدارة المستخدمين 👥</h2>
-            {allUsers.length === 0 ? <p className="text-center text-zinc-400">لا يوجد مستخدمين مسجلين</p> : 
-              allUsers.map(u => (
-                <div key={u.id} className={`bg-white p-4 rounded-3xl border flex items-center justify-between shadow-sm ${u.banned ? 'border-red-500 bg-red-50' : ''}`}>
-                    <div className="flex items-center gap-4">
-                        <img src={u.photo} className="w-16 h-16 rounded-full border object-cover" alt={u.name} />
-                        <div>
-                            <h3 className="font-black text-sm">{u.name} {u.banned && <span className="text-red-600 font-black">(محظور 🚫)</span>}</h3>
-                            <p className="text-[10px] text-zinc-500 font-mono mt-1 select-all bg-zinc-100 p-1 rounded">ID: {u.id}</p>
-                            <p className="text-[10px] text-zinc-400 mt-1">آخر ظهور: {new Date(u.lastSeen).toLocaleDateString()}</p>
-                        </div>
-                    </div>
-                    <button onClick={() => toggleBan(u.id, u.banned)} className={`px-6 py-3 rounded-xl font-black text-xs text-white shadow-lg transition-all ${u.banned ? 'bg-green-600' : 'bg-red-600'}`}>{u.banned ? 'فك الحظر ✅' : 'حظر 🚫'}</button>
-                </div>
-              ))
-            }
-          </div>
-        )}
-
-        {/* --- 📦 إدارة المنشورات (الأدمن) --- */}
-        {activeTab === 'manage_posts' && isAdmin && (
-          <div className="max-w-3xl mx-auto space-y-6">
-            <h2 className="text-2xl font-black mb-6 text-right pr-3 border-r-4 border-black italic">إدارة المنشورات 📦</h2>
-            <div className="grid grid-cols-1 gap-4">
-                {products.length === 0 ? <p className="text-center text-zinc-400 py-10">الموقع فاضي</p> : 
-                  products.map(item => (
-                    <div key={item.id} className="bg-white p-4 rounded-3xl border flex items-center justify-between shadow-sm">
-                        <div className="flex items-center gap-4"><img src={item.image} className="w-20 h-20 rounded-2xl object-cover border" alt={item.name} /><div><h3 className="font-black text-sm">{item.name}</h3><p className="text-[10px] text-zinc-500 font-bold mt-1">البائع: {item.sellerName}</p><p className="text-xs text-yellow-600 font-black mt-1">{item.price} ج.م</p></div></div>
-                        <button onClick={() => deletePostAsAdmin(item.id)} className="bg-red-50 text-red-600 px-4 py-3 rounded-xl font-black text-xs hover:bg-red-600 hover:text-white transition-colors shadow-sm">حذف 🗑️</button>
-                    </div>
-                  ))
-                }
-            </div>
-          </div>
-        )}
-
-        {/* --- 🚨 إدارة البلاغات (الأدمن) --- */}
-        {activeTab === 'reports' && isAdmin && (
-          <div className="max-w-2xl mx-auto space-y-4">
-            <h2 className="text-2xl font-black mb-6 text-right pr-3 border-r-4 border-red-600 italic text-red-600">البلاغات 🚨</h2>
-            {reports.map(rep => (
-                <div key={rep.id} className="bg-red-50 p-6 rounded-[2rem] border border-red-200 shadow-sm relative">
-                   <div className="flex justify-between items-start mb-4">
-                      <div><h4 className="font-black text-red-800 text-lg">ضد: {rep.reportedUserName}</h4><p className="text-xs text-red-400 font-bold mt-1">من: {rep.reporterName}</p></div>
-                      <button onClick={() => dismissReport(rep.id)} className="bg-white text-red-600 px-4 py-2 rounded-xl text-xs font-black border border-red-100 shadow-sm">إغلاق</button>
-                   </div>
-                   <div className="bg-white p-4 rounded-xl border border-red-100 text-sm font-bold text-zinc-700">📝 {rep.reason}</div>
-                </div>
-            ))}
-          </div>
-        )}
-
-        {/* --- 📩 صندوق الوارد --- */}
+        {/* صندوق الوارد */}
         {activeTab === 'inbox' && (
           <div className="max-w-2xl mx-auto space-y-4">
             <h2 className="text-2xl font-black mb-6 text-right pr-3 border-r-4 border-yellow-400 italic">بريد الورشة 📩</h2>
@@ -441,6 +352,37 @@ export default function Dashboard({ user }) {
           </div>
         )}
 
+        {/* صفحة الدعم الفني (للأدمن) */}
+        {activeTab === 'support' && (
+          <div className="max-w-md mx-auto space-y-6">
+            <h2 className="text-2xl font-black text-center italic">الدعم الفني المباشر 🎧</h2>
+            <div className="bg-white p-4 rounded-[2.5rem] border shadow-inner h-[300px] overflow-y-auto flex flex-col gap-3 no-scrollbar">
+                {myMessages.filter(m => m.fromId === 'Admin' || m.toId === 'Admin').length > 0 ? (
+                    myMessages.filter(m => m.fromId === 'Admin' || m.toId === 'Admin').sort((a,b) => new Date(a.date) - new Date(b.date)).map((msg, i) => (
+                        <div key={i} className={`p-3 rounded-2xl text-xs font-bold max-w-[80%] ${msg.fromId === user.uid ? 'bg-yellow-400 self-end text-black' : 'bg-zinc-100 self-start text-zinc-800'}`}>
+                            {msg.text || " رسالة"}
+                        </div>
+                    ))
+                ) : <p className="text-center text-zinc-400 my-auto text-xs">لا توجد رسائل سابقة مع الدعم</p>}
+            </div>
+            <div className="bg-white p-6 rounded-[2.5rem] border text-center shadow-lg">
+                <textarea className="w-full bg-zinc-50 border rounded-2xl p-4 text-sm mb-4 outline-none min-h-[100px] font-bold" placeholder="اكتب مشكلتك هنا..." value={supportMsg} onChange={(e) => setSupportMsg(e.target.value)} />
+                <button onClick={() => {
+                    if(!supportMsg) return;
+                    const msgData = { userId: user.uid, userName: user.displayName, msg: supportMsg, date: new Date().toISOString() };
+                    // رسالة للدعم (الجدول القديم)
+                    push(ref(db, 'support'), msgData);
+                    // رسالة للشات (الجدول الجديد)
+                    const chatData = { fromName: user.displayName, fromId: user.uid, text: supportMsg, date: new Date().toISOString() };
+                    push(ref(db, `messages/Admin`), chatData); 
+                    push(ref(db, `messages/${user.uid}`), { ...chatData, toId: 'Admin' });
+                    setSupportMsg(''); alert("تم الإرسال للدعم ✅");
+                }} className="w-full bg-zinc-950 text-white py-4 rounded-2xl font-black shadow-lg">إرسال للمدير</button>
+            </div>
+          </div>
+        )}
+
+        {/* البروفايل */}
         {activeTab === 'profile' && (
           <div className="max-w-xl mx-auto text-right">
             <div className="bg-white rounded-[2.5rem] p-8 border mb-8 text-center shadow-sm">
@@ -488,10 +430,16 @@ export default function Dashboard({ user }) {
         </div>
       )}
       
-      {/* مودالات (خيارات - إضافة - عرض صورة) */}
+      {/* مودال الخيارات (الضغط المطول) */}
       {optionsModal.show && (<div className="fixed inset-0 bg-black/50 z-[200] flex items-center justify-center p-4 backdrop-blur-sm" onClick={() => setOptionsModal({ ...optionsModal, show: false })}><div className="bg-white w-full max-w-sm p-6 rounded-[2rem] shadow-2xl animate-slideUp text-center space-y-4" onClick={(e) => e.stopPropagation()}><h3 className="font-black text-lg mb-4">خيارات ⚙️</h3><button onClick={handlePin} className="w-full bg-yellow-100 text-yellow-700 py-4 rounded-xl font-bold flex items-center justify-center gap-2 hover:bg-yellow-200">{pinnedChats.includes(optionsModal.targetId) ? '❌ إلغاء التثبيت' : '📌 تثبيت'}</button><button onClick={handleReport} className="w-full bg-red-50 text-red-600 py-4 rounded-xl font-bold flex items-center justify-center gap-2 hover:bg-red-100">🚨 إبلاغ</button><button onClick={() => setOptionsModal({ ...optionsModal, show: false })} className="w-full text-zinc-400 text-xs font-bold pt-2">إلغاء</button></div></div>)}
-      {!['inbox', 'profile', 'reports', 'manage_posts', 'users'].includes(activeTab) && <button onClick={() => setShowModal(true)} className="fixed bottom-10 left-10 w-20 h-20 bg-yellow-400 text-black rounded-full shadow-[0_10px_40px_rgba(255,215,0,0.4)] text-4xl font-black z-[100] border-4 border-white hover:scale-110 active:scale-90 transition-all flex items-center justify-center shadow-lg shadow-yellow-400/20">+</button>}
+      
+      {/* زر الإضافة العائم */}
+      {!['inbox', 'profile', 'support'].includes(activeTab) && <button onClick={() => setShowModal(true)} className="fixed bottom-10 left-10 w-20 h-20 bg-yellow-400 text-black rounded-full shadow-[0_10px_40px_rgba(255,215,0,0.4)] text-4xl font-black z-[100] border-4 border-white hover:scale-110 active:scale-90 transition-all flex items-center justify-center shadow-lg shadow-yellow-400/20">+</button>}
+      
+      {/* مودال نشر منتج */}
       {showModal && <div className="fixed inset-0 bg-black/80 z-[120] flex items-center justify-center p-4 backdrop-blur-sm"><div className="bg-white w-full max-w-lg p-8 rounded-[2.5rem] relative overflow-y-auto max-h-[90vh] shadow-2xl animate-slideUp"><button onClick={() => setShowModal(false)} className="absolute top-6 left-6 text-2xl text-zinc-300 hover:text-black">&times;</button><h2 className="text-xl font-black mb-6 text-center italic">إضافة جهاز 🚀</h2><form onSubmit={handlePublish} className="space-y-4 font-bold"><div className="border-2 border-dashed border-zinc-200 rounded-2xl p-4 text-center cursor-pointer relative hover:bg-zinc-50"><input type="file" accept="image/*" onChange={(e) => {const file = e.target.files[0];const reader = new FileReader();reader.onloadend = () => setNewProduct({ ...newProduct, image: reader.result });reader.readAsDataURL(file);}} className="absolute inset-0 w-full h-full opacity-0 cursor-pointer" />{newProduct.image ? <img src={newProduct.image} className="h-40 mx-auto rounded-xl shadow-md object-contain" /> : <p className="text-xs text-zinc-400 py-10 font-black">ارفع صورة 📸</p>}</div><input placeholder="الاسم" className="w-full bg-zinc-100 p-4 rounded-xl outline-none text-sm font-bold" value={newProduct.name} onChange={e => setNewProduct({...newProduct, name: e.target.value})} /><select className="w-full bg-zinc-100 p-4 rounded-xl font-bold text-sm outline-none" value={newProduct.category} onChange={e => setNewProduct({...newProduct, category: e.target.value})}>{categories.map(cat => <option key={cat.id} value={cat.name}>{cat.name}</option>)}</select><div className="flex gap-2"><input placeholder="السعر" className="flex-1 bg-zinc-100 p-4 rounded-xl outline-none font-bold text-sm" value={newProduct.price} onChange={e => setNewProduct({...newProduct, price: e.target.value})} /><select className="bg-zinc-100 p-4 rounded-xl font-bold text-sm outline-none" value={newProduct.condition} onChange={e => setNewProduct({...newProduct, condition: e.target.value})}><option value="new">✨ جديد</option><option value="used">🛠️ مستعمل</option></select></div><input placeholder="الموبايل" className="w-full bg-zinc-100 p-4 rounded-xl outline-none font-bold text-sm" value={newProduct.phone} onChange={e => setNewProduct({...newProduct, phone: e.target.value})} /><button type="submit" disabled={uploading} className="w-full bg-yellow-400 py-4 rounded-2xl font-black shadow-lg">نشر الآن ✅</button></form></div></div>}
+      
+      {/* مودال عرض الصورة مكبرة */}
       {viewImage && <div className="fixed inset-0 bg-black/98 z-[200] flex items-center justify-center p-4 animate-fadeIn" onClick={() => setViewImage(null)}><img src={viewImage} className="max-w-full max-h-full rounded-2xl shadow-2xl animate-zoomIn" alt="full view" /><button className="absolute top-8 left-8 text-white text-5xl hover:text-yellow-400 transition-colors">&times;</button></div>}
       
       <footer className="text-center pb-10 pt-4 opacity-40"><p className="text-[12px] text-zinc-400 font-black uppercase tracking-[0.4em] italic italic font-cairo">AHMED • EST. 2026</p></footer>
