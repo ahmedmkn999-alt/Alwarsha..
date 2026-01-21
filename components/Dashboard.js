@@ -42,7 +42,7 @@ export default function Dashboard({ user }) {
   useEffect(() => {
     const head = document.getElementsByTagName('head')[0];
     
-    // Adsense
+    // Adsense Code
     const adsScript = document.createElement('script');
     adsScript.src = "https://pagead2.googlesyndication.com/pagead/js/adsbygoogle.js?client=ca-pub-7765309726770552";
     adsScript.async = true;
@@ -93,12 +93,11 @@ export default function Dashboard({ user }) {
 
   const handleBack = () => { setActiveTab('home'); setSelectedCategory('all'); setSearchTerm(''); };
 
-  // دالة بحث ذكية: بتلغي الفلاتر لما تكتب
   const handleSearchChange = (e) => {
     setSearchTerm(e.target.value);
     if (e.target.value !== '') {
-        setSelectedCategory('all'); // الغاء فلتر القسم
-        setActiveTab('home');      // الغاء فلتر جديد/مستعمل
+        setSelectedCategory('all'); 
+        setActiveTab('home');
     }
   };
 
@@ -155,14 +154,15 @@ export default function Dashboard({ user }) {
     });
   };
 
-  // تحسين منطق الفلترة ليكون أكثر مرونة
+  // ✅ التعديل هنا: البحث الآن يشمل اسم المنتج واسم القسم
   const filtered = products.filter(p => {
-    // توحيد الحروف (نورماليزيشن) عشان البحث يكون دقيق (مثلا: "أ" زي "ا")
-    const normalize = (str) => str?.toLowerCase().replace(/[أإآ]/g, 'ا').replace(/[ة]/g, 'ه') || "";
+    const normalize = (str) => str?.toLowerCase().replace(/[أإآ]/g, 'ا').replace(/[ة]/g, 'ه').trim() || "";
     const search = normalize(searchTerm);
     const name = normalize(p.name);
+    const categoryName = normalize(p.category); // اسم القسم (مثل خلاطات)
     
-    const matchSearch = name.includes(search);
+    // الشرط: هل الاسم فيه الكلمة؟ أو هل القسم فيه الكلمة؟
+    const matchSearch = name.includes(search) || categoryName.includes(search);
     const matchCategory = selectedCategory === 'all' || p.category === selectedCategory;
     const matchTab = activeTab === 'home' || p.condition === activeTab;
     
@@ -197,7 +197,6 @@ export default function Dashboard({ user }) {
         </div>
         {activeTab === 'home' && (
           <div className="container mx-auto px-4 pb-3 relative animate-fadeIn">
-              {/* تم ربط البحث بالدالة الجديدة handleSearchChange */}
               <input className="w-full bg-zinc-900 border-none rounded-2xl p-3 text-xs text-white outline-none focus:ring-1 focus:ring-yellow-400 font-bold text-center" placeholder="ابحث في الورشة..." value={searchTerm} onFocus={() => setShowSearchSuggestions(true)} onChange={handleSearchChange} />
               {showSearchSuggestions && (
                 <div className="absolute top-full left-4 right-4 bg-zinc-900 rounded-2xl mt-2 p-2 shadow-2xl z-[60] border border-zinc-800 max-h-48 overflow-y-auto">
@@ -265,7 +264,7 @@ export default function Dashboard({ user }) {
           </>
         )}
 
-        {/* باقي الكود (Inbox, Support, Profile, Modals) كما هو بدون تغيير */}
+        {/* باقي الكود (Inbox, Support, Profile, Modals) */}
         {activeTab === 'inbox' && (
           <div className="max-w-2xl mx-auto space-y-4">
             <h2 className="text-2xl font-black mb-6 text-right pr-3 border-r-4 border-yellow-400 italic">بريد الورشة 📩</h2>
