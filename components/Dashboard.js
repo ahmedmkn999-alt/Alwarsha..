@@ -16,6 +16,12 @@ export default function Dashboard({ user }) {
   const [myMessages, setMyMessages] = useState([]);
   const [supportMsg, setSupportMsg] = useState('');
   
+  // --- حالات الميزات الجديدة (التثبيت والقراءة والخيارات) ---
+  const [readChats, setReadChats] = useState([]); // لتخزين المحادثات المقروءة
+  const [pinnedChats, setPinnedChats] = useState([]); // لتخزين المحادثات المثبتة
+  const [optionsModal, setOptionsModal] = useState({ show: false, targetId: '', targetName: '' }); // مودال الخيارات
+  const longPressTimer = useRef(null); // مؤقت الضغطة المطولة
+
   // --- حالات المودالات ---
   const [showModal, setShowModal] = useState(false);
   const [newProduct, setNewProduct] = useState({ 
@@ -46,7 +52,6 @@ export default function Dashboard({ user }) {
 
   useEffect(() => {
     const timer = setTimeout(() => setShowSplash(false), 3500);
-
     const head = document.getElementsByTagName('head')[0];
     
     // AdSense & SEO
@@ -78,22 +83,48 @@ export default function Dashboard({ user }) {
     return () => clearTimeout(timer);
   }, [user]);
 
-  // ✅ تصليح الفلاتر: لما تختار جديد/مستعمل يصفر باقي الفلاتر عشان يجيب نتايج
-  const handleTabChange = (tab) => {
-    setActiveTab(tab);
-    setSelectedCategory('all'); // الغاء تحديد القسم
-    setSearchTerm('');          // الغاء البحث
+  // --- دوال التحكم في الضغطة المطولة ---
+  const handleTouchStart = (id, name) => {
+    longPressTimer.current = setTimeout(() => {
+      setOptionsModal({ show: true, targetId: id, targetName: name });
+    }, 800); // 0.8 ثانية تعتبر ضغطة مطولة
   };
 
+  const handleTouchEnd = () => {
+    if (longPressTimer.current) clearTimeout(longPressTimer.current);
+  };
+
+  // --- دالة الإبلاغ ---
+  const handleReport = () => {
+    const reportData = {
+      reporterId: user.uid,
+      reporterName: user.displayName,
+      reportedUserId: optionsModal.targetId,
+      reportedUserName: optionsModal.targetName,
+      date: new Date().toISOString(),
+      reason: "بلاغ من المستخدم عبر التطبيق"
+    };
+    push(ref(db, 'reports'), reportData); // إرسال لقاعدة البيانات
+    alert(`تم إرسال بلاغ ضد ${optionsModal.targetName} للإدارة 🚨`);
+    setOptionsModal({ ...optionsModal, show: false });
+  };
+
+  // --- دالة التثبيت ---
+  const handlePin = () => {
+    if (pinnedChats.includes(optionsModal.targetId)) {
+      setPinnedChats(pinnedChats.filter(id => id !== optionsModal.targetId)); // إلغاء التثبيت
+    } else {
+      setPinnedChats([...pinnedChats, optionsModal.targetId]); // تثبيت
+    }
+    setOptionsModal({ ...optionsModal, show: false });
+  };
+
+  const handleTabChange = (tab) => { setActiveTab(tab); setSelectedCategory('all'); setSearchTerm(''); };
   const handleBack = () => { setActiveTab('home'); setSelectedCategory('all'); setSearchTerm(''); };
 
   const handleSearchChange = (e) => {
     setSearchTerm(e.target.value);
-    if (e.target.value !== '') { 
-        setSelectedCategory('all'); 
-        setActiveTab('home'); 
-        setShowSearchSuggestions(true);
-    }
+    if (e.target.value !== '') { setSelectedCategory('all'); setActiveTab('home'); setShowSearchSuggestions(true); }
   };
 
   const deleteConversation = (otherId) => {
@@ -106,6 +137,7 @@ export default function Dashboard({ user }) {
     alert("تم مسح المحادثة بنجاح 🗑️");
   };
 
+  // --- Voice & Chat Logic ---
   const startRecording = async (e) => {
     try {
       touchStartPos.current = e.touches ? e.touches[0].clientX : e.clientX;
@@ -130,12 +162,7 @@ export default function Dashboard({ user }) {
     } catch (err) { alert("يرجى تفعيل الميكروفون 🎤"); }
   };
 
-  const handleDrag = (e) => {
-    if (!isRecording) return;
-    const currentPos = e.touches ? e.touches[0].clientX : e.clientX;
-    if (currentPos - touchStartPos.current > 70) setIsCancelled(true); else setIsCancelled(false);
-  };
-
+  const handleDrag = (e) => { if (!isRecording) return; if ((e.touches ? e.touches[0].clientX : e.clientX) - touchStartPos.current > 70) setIsCancelled(true); else setIsCancelled(false); };
   const stopRecording = () => { if (mediaRecorder) { mediaRecorder.stop(); setIsRecording(false); } };
 
   const sendMsgToSeller = () => {
@@ -157,16 +184,22 @@ export default function Dashboard({ user }) {
   const adminMessages = myMessages.filter(m => m.fromId === 'Admin' || m.toId === 'Admin');
   const customerMessages = myMessages.filter(m => m.fromId !== 'Admin' && m.toId !== 'Admin');
 
+  // حساب عدد الرسائل غير المقروءة (الفريدة)
+  const uniqueConversations = [...new Map(customerMessages.map(m => [m.fromId === user.uid ? m.toId : m.fromId, m])).values()];
+  const unreadCount = uniqueConversations.filter(c => {
+    const otherId = c.fromId === user.uid ? c.toId : c.fromId;
+    // الرسالة غير مقروءة لو كانت من الطرف التاني ولسه متمش فتحها
+    return c.fromId !== user.uid && !readChats.includes(otherId);
+  }).length;
+
   const filtered = products.filter(p => {
     const normalize = (str) => str?.toLowerCase().replace(/[أإآ]/g, 'ا').replace(/[ة]/g, 'ه').trim() || "";
     const search = normalize(searchTerm);
     const name = normalize(p.name);
     const categoryName = normalize(p.category);
-    
     const matchSearch = name.includes(search) || categoryName.includes(search);
     const matchCategory = selectedCategory === 'all' || p.category === selectedCategory;
     const matchTab = activeTab === 'home' || p.condition === activeTab;
-    
     return matchSearch && matchCategory && matchTab;
   });
 
@@ -204,8 +237,9 @@ export default function Dashboard({ user }) {
              <button onClick={() => setActiveTab('support')} className={`p-2.5 rounded-xl transition-all ${activeTab === 'support' ? 'bg-yellow-400 text-black' : 'bg-zinc-900 text-zinc-500'}`}>
                 🎧 {adminMessages.some(m => m.fromId === 'Admin') && <span className="absolute top-1 right-1 bg-red-600 w-2 h-2 rounded-full"></span>}
              </button>
+             {/* ✅ العداد الجديد للرسائل */}
              <button onClick={() => setActiveTab('inbox')} className={`p-2.5 rounded-xl relative transition-all ${activeTab === 'inbox' ? 'bg-yellow-400 text-black' : 'bg-zinc-900 text-zinc-500'}`}>
-                📩 {customerMessages.length > 0 && <span className="absolute -top-1 -right-1 bg-red-600 text-white text-[9px] rounded-full w-4 h-4 flex items-center justify-center border-2 border-zinc-950 font-black">!</span>}
+                📩 {unreadCount > 0 && <span className="absolute -top-1 -right-1 bg-red-600 text-white text-[9px] rounded-full w-4 h-4 flex items-center justify-center border-2 border-zinc-950 font-black animate-pulse">{unreadCount}</span>}
              </button>
              <button onClick={() => setActiveTab('profile')} className={`active:scale-90 transition-transform ${activeTab === 'profile' ? 'ring-2 ring-yellow-400 p-0.5 rounded-full' : ''}`}>
                 <img src={user.photoURL} className="w-9 h-9 rounded-full border border-zinc-700 object-cover" alt="profile" />
@@ -216,7 +250,6 @@ export default function Dashboard({ user }) {
           <div className="container mx-auto px-4 pb-3 relative animate-fadeIn">
               <input className="w-full bg-zinc-900 border-none rounded-2xl p-3 text-xs text-white outline-none focus:ring-1 focus:ring-yellow-400 font-bold text-center" placeholder="ابحث في الورشة..." value={searchTerm} onFocus={() => setShowSearchSuggestions(true)} onChange={handleSearchChange} />
               
-              {/* ✅ تصليح البحث: القائمة بتتقفل لما تضغط بره، وزرار الإغلاق فوق */}
               {showSearchSuggestions && (
                 <>
                   <div className="fixed inset-0 z-[55] cursor-pointer" onClick={() => setShowSearchSuggestions(false)}></div>
@@ -258,7 +291,6 @@ export default function Dashboard({ user }) {
         {activeTab === 'home' && (
           <>
             <div className="flex justify-center gap-3 mb-8">
-              {/* ✅ استخدام الدالة الجديدة handleTabChange */}
               <button onClick={() => handleTabChange('home')} className={`px-8 py-2.5 rounded-2xl font-black text-xs transition-all ${activeTab === 'home' ? 'bg-zinc-950 text-yellow-400 shadow-lg' : 'bg-white text-zinc-400 border'}`}>الكل</button>
               <button onClick={() => handleTabChange('new')} className={`px-8 py-2.5 rounded-2xl font-black text-xs transition-all ${activeTab === 'new' ? 'bg-zinc-950 text-yellow-400 shadow-lg' : 'bg-white text-zinc-400 border'}`}>جديد ✨</button>
               <button onClick={() => handleTabChange('used')} className={`px-8 py-2.5 rounded-2xl font-black text-xs transition-all ${activeTab === 'used' ? 'bg-zinc-950 text-yellow-400 shadow-lg' : 'bg-white text-zinc-400 border'}`}>مستعمل 🛠️</button>
@@ -294,16 +326,43 @@ export default function Dashboard({ user }) {
         {activeTab === 'inbox' && (
           <div className="max-w-2xl mx-auto space-y-4">
             <h2 className="text-2xl font-black mb-6 text-right pr-3 border-r-4 border-yellow-400 italic">بريد الورشة 📩</h2>
-            {[...new Map(customerMessages.map(m => [m.fromId === user.uid ? m.toId : m.fromId, m])).values()].length === 0 ? (
+            {uniqueConversations.length === 0 ? (
                 <p className="text-center text-zinc-400 py-10 font-bold">صندوق الوارد فارغ 📭</p>
             ) : (
-                [...new Map(customerMessages.map(m => [m.fromId === user.uid ? m.toId : m.fromId, m])).values()].map(chat => {
+                // ترتيب المحادثات: المثبتة أولاً، ثم الأحدث
+                uniqueConversations.sort((a,b) => {
+                    const idA = a.fromId === user.uid ? a.toId : a.fromId;
+                    const idB = b.fromId === user.uid ? b.toId : b.fromId;
+                    const isPinnedA = pinnedChats.includes(idA);
+                    const isPinnedB = pinnedChats.includes(idB);
+                    if (isPinnedA && !isPinnedB) return -1;
+                    if (!isPinnedA && isPinnedB) return 1;
+                    return new Date(b.date) - new Date(a.date);
+                }).map(chat => {
                     const otherId = chat.fromId === user.uid ? chat.toId : chat.fromId;
+                    const isPinned = pinnedChats.includes(otherId);
+                    
                     return (
-                        <div key={chat.id} className="flex gap-2 items-center">
+                        <div key={chat.id} className="flex gap-2 items-center relative select-none">
                             <button onClick={() => deleteConversation(otherId)} className="bg-red-50 text-red-500 w-12 h-20 rounded-2xl flex items-center justify-center shadow-sm active:scale-95 transition-all">🗑️</button>
-                            <div onClick={() => setMessageModal({ show: true, receiverId: otherId, receiverName: chat.fromName })} className="flex-1 bg-white p-6 rounded-[2rem] border flex items-center gap-5 cursor-pointer hover:border-yellow-400 transition-all shadow-sm">
-                                <div className="w-14 h-14 rounded-full bg-zinc-950 text-yellow-400 flex items-center justify-center font-black text-xl">{chat.fromName[0]}</div>
+                            <div 
+                                // ✅ إضافة أحداث الضغطة المطولة هنا
+                                onContextMenu={(e) => { e.preventDefault(); }} // منع القائمة العادية
+                                onTouchStart={() => handleTouchStart(otherId, chat.fromName)}
+                                onTouchEnd={handleTouchEnd}
+                                onMouseDown={() => handleTouchStart(otherId, chat.fromName)} // للكمبيوتر برضه
+                                onMouseUp={handleTouchEnd}
+                                onClick={() => {
+                                    // عند الضغط، نعتبر الرسالة مقروءة
+                                    if (!readChats.includes(otherId)) setReadChats([...readChats, otherId]);
+                                    setMessageModal({ show: true, receiverId: otherId, receiverName: chat.fromName });
+                                }}
+                                className={`flex-1 bg-white p-6 rounded-[2rem] border flex items-center gap-5 cursor-pointer hover:border-yellow-400 transition-all shadow-sm ${isPinned ? 'border-yellow-400 ring-2 ring-yellow-100 bg-yellow-50' : ''}`}
+                            >
+                                <div className="w-14 h-14 rounded-full bg-zinc-950 text-yellow-400 flex items-center justify-center font-black text-xl relative">
+                                    {chat.fromName[0]}
+                                    {isPinned && <span className="absolute -top-1 -left-1 text-sm">📌</span>}
+                                </div>
                                 <div className="flex-1 text-right">
                                     <h4 className="font-black text-zinc-900">{chat.fromName}</h4>
                                     <p className="text-xs text-zinc-400 line-clamp-1 mt-1">{chat.text || "🎤 رسالة صوتية"}</p>
@@ -316,7 +375,6 @@ export default function Dashboard({ user }) {
           </div>
         )}
 
-        {/* باقي الكود (الدعم والبروفايل والمودالات) كما هو بدون تغيير */}
         {activeTab === 'support' && (
           <div className="max-w-md mx-auto space-y-6">
             <h2 className="text-2xl font-black text-center italic">الدعم الفني المباشر 🎧</h2>
@@ -341,7 +399,6 @@ export default function Dashboard({ user }) {
                     const chatData = { fromName: user.displayName, fromId: user.uid, text: supportMsg, date: new Date().toISOString() };
                     push(ref(db, `messages/Admin`), chatData); 
                     push(ref(db, `messages/${user.uid}`), { ...chatData, toId: 'Admin' });
-
                     setSupportMsg(''); alert("تم الإرسال للدعم ✅");
                 }} className="w-full bg-zinc-950 text-white py-4 rounded-2xl font-black shadow-lg">إرسال للمدير</button>
             </div>
@@ -370,6 +427,26 @@ export default function Dashboard({ user }) {
           </div>
         )}
       </main>
+
+      {/* --- ✅ مودال الخيارات الجديد (تثبيت / إبلاغ) --- */}
+      {optionsModal.show && (
+        <div className="fixed inset-0 bg-black/50 z-[200] flex items-center justify-center p-4 backdrop-blur-sm" onClick={() => setOptionsModal({ ...optionsModal, show: false })}>
+            <div className="bg-white w-full max-w-sm p-6 rounded-[2rem] shadow-2xl animate-slideUp text-center space-y-4" onClick={(e) => e.stopPropagation()}>
+                <h3 className="font-black text-lg mb-4">خيارات المحادثة ⚙️</h3>
+                <p className="text-sm text-zinc-500 mb-6">مع {optionsModal.targetName}</p>
+                
+                <button onClick={handlePin} className="w-full bg-yellow-100 text-yellow-700 py-4 rounded-xl font-bold flex items-center justify-center gap-2 hover:bg-yellow-200">
+                    {pinnedChats.includes(optionsModal.targetId) ? '❌ إلغاء التثبيت' : '📌 تثبيت في الأعلى'}
+                </button>
+                
+                <button onClick={handleReport} className="w-full bg-red-50 text-red-600 py-4 rounded-xl font-bold flex items-center justify-center gap-2 hover:bg-red-100">
+                    🚨 إبلاغ عن المستخدم
+                </button>
+                
+                <button onClick={() => setOptionsModal({ ...optionsModal, show: false })} className="w-full text-zinc-400 text-xs font-bold pt-2">إلغاء</button>
+            </div>
+        </div>
+      )}
 
       {/* --- المودالات نفس القديم --- */}
       {showModal && (
