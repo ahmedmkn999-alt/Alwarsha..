@@ -27,10 +27,10 @@ export default function Dashboard({ user }) {
   const [mediaRecorder, setMediaRecorder] = useState(null);
   const touchStartPos = useRef(0);
 
-  // تم ضبط أسماء الصور لتطابق ما لديك في GitHub بالضبط
+  // القائمة بأسماء الملفات كما هي عندك بالضبط
   const categories = [
     { id: 'parts', name: 'قطع غيار', img: '/parts.jpg' },
-    { id: 'heater', name: 'سخانات', img: '/heater (1).jpg' }, // الاسم كما في صورتك
+    { id: 'heater', name: 'سخانات', img: '/heater (1).jpg' },
     { id: 'ac', name: 'تكييفات', img: '/ac.jpg.webp' },
     { id: 'wash', name: 'غسالات', img: '/washing.jpg' },
     { id: 'fridge', name: 'ثلاجات', img: '/fridge.jpg' },
@@ -43,7 +43,15 @@ export default function Dashboard({ user }) {
   useEffect(() => {
     const head = document.getElementsByTagName('head')[0];
     
-    // SEO Codes
+    // --- 💰 كود إعلانات جوجل (AdSense) الخاص بك ---
+    const adsScript = document.createElement('script');
+    adsScript.src = "https://pagead2.googlesyndication.com/pagead/js/adsbygoogle.js?client=ca-pub-7765309726770552";
+    adsScript.async = true;
+    adsScript.crossOrigin = "anonymous";
+    head.appendChild(adsScript);
+    // ----------------------------------------------
+
+    // SEO
     const title = document.createElement('title');
     title.innerText = "الورشة - قطع غيار وأجهزة كهربائية";
     head.appendChild(title);
@@ -53,21 +61,14 @@ export default function Dashboard({ user }) {
     description.content = "الورشة هي المنصة الأولى لبيع وشراء قطع الغيار والأجهزة الكهربائية الجديدة والمستعملة في مصر.";
     head.appendChild(description);
 
-    // ربط ملف manifest
+    // Manifest & Icons
     const manifestLink = document.createElement('link');
     manifestLink.rel = 'manifest'; manifestLink.href = '/manifest.json';
     head.appendChild(manifestLink);
 
-    // ✅ تعديل اسم الأيقونة هنا ليطابق ملفك (icon.png.jpg)
     const appleIcon = document.createElement('link');
-    appleIcon.rel = 'apple-touch-icon'; appleIcon.href = '/icon.png.jpg'; 
+    appleIcon.rel = 'apple-touch-icon'; appleIcon.href = '/icon.png.jpg'; // اسم الأيقونة كما هو عندك
     head.appendChild(appleIcon);
-
-    // كود إثبات ملكية جوجل (الخاص بك)
-    const googleVer = document.createElement('meta');
-    googleVer.name = "google-site-verification";
-    googleVer.content = "v_xxxxxxxxxxxxxxxxxxxxxx"; // (سيتم قراءته من ملف HTML الذي رفعته)
-    head.appendChild(googleVer);
 
     const meta = document.createElement('meta');
     meta.name = "viewport"; meta.content = "width=device-width, initial-scale=1, maximum-scale=1, user-scalable=0";
@@ -88,7 +89,7 @@ export default function Dashboard({ user }) {
     }
   }, [user]);
 
-  // --- باقي الدوال كما هي ---
+  // --- باقي الدوال ---
   const handleBack = () => { setActiveTab('home'); setSelectedCategory('all'); setSearchTerm(''); };
 
   const startRecording = async (e) => {
@@ -192,9 +193,6 @@ export default function Dashboard({ user }) {
         )}
       </header>
 
-      {/* باقي الأكواد (الواجهة الرئيسية والمودالات) كما هي في النسخة السابقة تماماً */}
-      {/* ... (نفس كود الواجهة السابق لعدم الإطالة، فقط التغيير كان في useEffect وقائمة categories) ... */}
-      
       {activeTab === 'home' && (
         <div className="bg-white shadow-sm border-b py-4 overflow-x-auto no-scrollbar sticky top-[125px] z-40 animate-slideDown">
           <div className="container mx-auto px-4 flex gap-4">
