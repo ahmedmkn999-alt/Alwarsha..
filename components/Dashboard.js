@@ -5,7 +5,7 @@ import { signOut } from "firebase/auth";
 
 export default function Dashboard({ user }) {
   // --- حالات التحكم ---
-  const [showSplash, setShowSplash] = useState(true); // 1. حالة شاشة الترحيب
+  const [showSplash, setShowSplash] = useState(true); // شاشة الترحيب
   const [activeTab, setActiveTab] = useState('home'); 
   const [selectedCategory, setSelectedCategory] = useState('all'); 
   const [searchTerm, setSearchTerm] = useState('');
@@ -45,8 +45,8 @@ export default function Dashboard({ user }) {
   ];
 
   useEffect(() => {
-    // 1. إخفاء شاشة الترحيب بعد 3 ثواني
-    const timer = setTimeout(() => setShowSplash(false), 3000);
+    // 1. إخفاء شاشة الترحيب بعد 3.5 ثانية (زودت الوقت شوية عشان يلحق يقرأ اسمه)
+    const timer = setTimeout(() => setShowSplash(false), 3500);
 
     const head = document.getElementsByTagName('head')[0];
     
@@ -88,11 +88,9 @@ export default function Dashboard({ user }) {
     if (e.target.value !== '') { setSelectedCategory('all'); setActiveTab('home'); }
   };
 
-  // --- 3. دالة حذف المحادثة (من عندي فقط) ---
+  // دالة مسح المحادثة
   const deleteConversation = (otherId) => {
     if(!window.confirm("هل أنت متأكد من مسح المحادثة؟ لا يمكن التراجع.")) return;
-    
-    // يمسح كل الرسائل اللي بيني وبين الشخص ده من الداتا بيز الخاصة بي
     myMessages.forEach(msg => {
         if (msg.fromId === otherId || msg.toId === otherId) {
             remove(ref(db, `messages/${user.uid}/${msg.id}`));
@@ -150,11 +148,9 @@ export default function Dashboard({ user }) {
     .then(() => { setUploading(false); setShowModal(false); setNewProduct({ name: '', price: '', desc: '', condition: 'new', image: null, phone: '', category: 'تكييفات' }); alert("تم النشر بنجاح ✅"); });
   };
 
-  // 2. فصل رسائل الدعم عن رسائل الزبائن
   const adminMessages = myMessages.filter(m => m.fromId === 'Admin' || m.toId === 'Admin');
   const customerMessages = myMessages.filter(m => m.fromId !== 'Admin' && m.toId !== 'Admin');
 
-  // Filter Logic
   const filtered = products.filter(p => {
     const normalize = (str) => str?.toLowerCase().replace(/[أإآ]/g, 'ا').replace(/[ة]/g, 'ه').trim() || "";
     const search = normalize(searchTerm);
@@ -169,14 +165,19 @@ export default function Dashboard({ user }) {
   return (
     <div className="min-h-screen bg-zinc-50 pb-24 font-cairo select-none" dir="rtl">
       
-      {/* 1. شاشة الترحيب (Splash Screen) */}
+      {/* 1. شاشة الترحيب (Splash Screen) مع الاسم */}
       {showSplash && (
-        <div className="fixed inset-0 bg-black z-[999] flex flex-col items-center justify-center animate-fadeOut" style={{animationDelay: '2.5s', animationFillMode: 'forwards'}}>
+        <div className="fixed inset-0 bg-black z-[999] flex flex-col items-center justify-center animate-fadeOut" style={{animationDelay: '3s', animationFillMode: 'forwards'}}>
            <div className="w-24 h-24 bg-yellow-400 rounded-full flex items-center justify-center border-4 border-white shadow-[0_0_50px_rgba(255,215,0,0.5)] animate-bounce">
               <span className="text-black text-5xl font-black italic">W</span>
            </div>
            <h1 className="text-yellow-400 font-black text-3xl mt-6 tracking-tighter uppercase italic">AL-WARSHA</h1>
            <p className="text-zinc-500 text-sm mt-2 font-bold tracking-widest">EST. 2026</p>
+           {/* التعديل الجديد: رسالة ترحيب بالاسم */}
+           <div className="mt-10 text-center animate-pulse">
+              <p className="text-white text-xl font-bold">مرحباً بك يا</p>
+              <p className="text-yellow-400 text-2xl font-black mt-2">{user.displayName} ❤️</p>
+           </div>
         </div>
       )}
 
@@ -220,7 +221,6 @@ export default function Dashboard({ user }) {
         )}
       </header>
 
-      {/* الشريط الأفقي للأقسام (يظهر فقط في الرئيسية) */}
       {activeTab === 'home' && (
         <div className="bg-white shadow-sm border-b py-4 overflow-x-auto no-scrollbar sticky top-[125px] z-40 animate-slideDown">
           <div className="container mx-auto px-4 flex gap-4">
@@ -241,7 +241,6 @@ export default function Dashboard({ user }) {
 
       <main className="container mx-auto p-4 md:p-8 animate-fadeIn">
         
-        {/* الصفحة الرئيسية */}
         {activeTab === 'home' && (
           <>
             <div className="flex justify-center gap-3 mb-8">
@@ -274,7 +273,7 @@ export default function Dashboard({ user }) {
           </>
         )}
 
-        {/* 2. صندوق الوارد (فقط رسائل الزبائن) */}
+        {/* صندوق الوارد (مع زر الحذف) */}
         {activeTab === 'inbox' && (
           <div className="max-w-2xl mx-auto space-y-4">
             <h2 className="text-2xl font-black mb-6 text-right pr-3 border-r-4 border-yellow-400 italic">بريد الورشة 📩</h2>
@@ -300,12 +299,10 @@ export default function Dashboard({ user }) {
           </div>
         )}
 
-        {/* 2. قسم الدعم الفني (دردشة منفصلة مع الإدارة) */}
+        {/* قسم الدعم الفني المنفصل */}
         {activeTab === 'support' && (
           <div className="max-w-md mx-auto space-y-6">
             <h2 className="text-2xl font-black text-center italic">الدعم الفني المباشر 🎧</h2>
-            
-            {/* عرض محادثة الدعم السابقة */}
             <div className="bg-white p-4 rounded-[2.5rem] border shadow-inner h-[300px] overflow-y-auto flex flex-col gap-3 no-scrollbar">
                 {adminMessages.length > 0 ? (
                     adminMessages.sort((a,b) => new Date(a.date) - new Date(b.date)).map((msg, i) => (
@@ -323,9 +320,7 @@ export default function Dashboard({ user }) {
                 <button onClick={() => {
                     if(!supportMsg) return;
                     const msgData = { userId: user.uid, userName: user.displayName, msg: supportMsg, date: new Date().toISOString() };
-                    // إرسال لـ node الدعم
                     push(ref(db, 'support'), msgData);
-                    // إرسال كرسالة عادية للإدارة عشان تظهر في الشات فوق
                     const chatData = { fromName: user.displayName, fromId: user.uid, text: supportMsg, date: new Date().toISOString() };
                     push(ref(db, `messages/Admin`), chatData); 
                     push(ref(db, `messages/${user.uid}`), { ...chatData, toId: 'Admin' });
@@ -360,7 +355,7 @@ export default function Dashboard({ user }) {
         )}
       </main>
 
-      {/* --- المودالات (النشر والشات والصور) نفس السابق --- */}
+      {/* --- المودالات نفس القديم --- */}
       {showModal && (
         <div className="fixed inset-0 bg-black/80 z-[120] flex items-center justify-center p-4 backdrop-blur-sm">
           <div className="bg-white w-full max-w-lg p-8 rounded-[2.5rem] relative overflow-y-auto max-h-[90vh] shadow-2xl animate-slideUp">
