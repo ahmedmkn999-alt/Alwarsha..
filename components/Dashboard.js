@@ -43,7 +43,7 @@ export default function Dashboard({ user }) {
   useEffect(() => {
     const head = document.getElementsByTagName('head')[0];
     
-    // --- 💰 كود إعلانات جوجل (AdSense) الخاص بك ---
+    // --- 💰 كود إعلانات جوجل (AdSense) الجديد ---
     const adsScript = document.createElement('script');
     adsScript.src = "https://pagead2.googlesyndication.com/pagead/js/adsbygoogle.js?client=ca-pub-7765309726770552";
     adsScript.async = true;
@@ -51,7 +51,7 @@ export default function Dashboard({ user }) {
     head.appendChild(adsScript);
     // ----------------------------------------------
 
-    // SEO
+    // SEO Codes
     const title = document.createElement('title');
     title.innerText = "الورشة - قطع غيار وأجهزة كهربائية";
     head.appendChild(title);
@@ -61,14 +61,20 @@ export default function Dashboard({ user }) {
     description.content = "الورشة هي المنصة الأولى لبيع وشراء قطع الغيار والأجهزة الكهربائية الجديدة والمستعملة في مصر.";
     head.appendChild(description);
 
-    // Manifest & Icons
+    // Manifest & Icons (بنفس الأسماء الموجودة في ملفاتك)
     const manifestLink = document.createElement('link');
     manifestLink.rel = 'manifest'; manifestLink.href = '/manifest.json';
     head.appendChild(manifestLink);
 
     const appleIcon = document.createElement('link');
-    appleIcon.rel = 'apple-touch-icon'; appleIcon.href = '/icon.png.jpg'; // اسم الأيقونة كما هو عندك
+    appleIcon.rel = 'apple-touch-icon'; appleIcon.href = '/icon.png.jpg'; 
     head.appendChild(appleIcon);
+
+    // Google Verification (الكود الخاص بك)
+    const googleVer = document.createElement('meta');
+    googleVer.name = "google-site-verification";
+    googleVer.content = "v_xxxxxxxxxxxxxxxxxxxxxx"; // (جوجل هيقرأ ملف الـ HTML اللي رفعته تلقائي)
+    head.appendChild(googleVer);
 
     const meta = document.createElement('meta');
     meta.name = "viewport"; meta.content = "width=device-width, initial-scale=1, maximum-scale=1, user-scalable=0";
@@ -89,7 +95,7 @@ export default function Dashboard({ user }) {
     }
   }, [user]);
 
-  // --- باقي الدوال ---
+  // --- باقي الدوال (نفس الكود السابق تماماً) ---
   const handleBack = () => { setActiveTab('home'); setSelectedCategory('all'); setSearchTerm(''); };
 
   const startRecording = async (e) => {
