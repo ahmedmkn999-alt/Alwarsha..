@@ -13,6 +13,9 @@ export default function Dashboard({ user }) {
   const [isBanned, setIsBanned] = useState(false); 
   const [showBannedChat, setShowBannedChat] = useState(false);
   
+  // ✅ حالة الإشعار الجديد (Toast)
+  const [notification, setNotification] = useState({ show: false, msg: '' });
+
   // --- 2. البيانات ---
   const [products, setProducts] = useState([]);
   const [myMessages, setMyMessages] = useState([]);
@@ -57,8 +60,6 @@ export default function Dashboard({ user }) {
   useEffect(() => {
     const timer = setTimeout(() => setShowSplash(false), 3500);
     const head = document.getElementsByTagName('head')[0];
-    
-    // AdSense
     const adsScript = document.createElement('script');
     adsScript.src = "https://pagead2.googlesyndication.com/pagead/js/adsbygoogle.js?client=ca-pub-7765309726770552";
     adsScript.async = true;
@@ -94,6 +95,12 @@ export default function Dashboard({ user }) {
     return () => clearTimeout(timer);
   }, [user]);
 
+  // ✅ دالة إظهار الإشعار الشيك
+  const showToast = (message) => {
+    setNotification({ show: true, msg: message });
+    setTimeout(() => setNotification({ show: false, msg: '' }), 3000); // يختفي بعد 3 ثواني
+  };
+
   // --- 7. الوظائف ---
   const handleTouchStart = (id, name) => { longPressTimer.current = setTimeout(() => setOptionsModal({ show: true, targetId: id, targetName: name }), 800); };
   const handleTouchEnd = () => { if (longPressTimer.current) clearTimeout(longPressTimer.current); };
@@ -105,7 +112,7 @@ export default function Dashboard({ user }) {
           reportedUserId: optionsModal.targetId, reportedUserName: optionsModal.targetName,
           date: new Date().toISOString(), reason: "بلاغ من الشات"
         });
-        alert("تم الإبلاغ 🚨"); 
+        showToast("تم إرسال البلاغ للإدارة 🚨"); 
     }
     setOptionsModal({ ...optionsModal, show: false });
   };
@@ -119,6 +126,7 @@ export default function Dashboard({ user }) {
   const deleteConversation = (otherId) => {
     if(!window.confirm("مسح المحادثة؟")) return;
     myMessages.forEach(msg => { if (msg.fromId === otherId || msg.toId === otherId) remove(ref(db, `messages/${user.uid}/${msg.id}`)); });
+    showToast("تم حذف المحادثة 🗑️");
   };
 
   const sendMsgToSeller = () => {
@@ -148,17 +156,22 @@ export default function Dashboard({ user }) {
           };
         } setIsCancelled(false);
       }; recorder.start(); setMediaRecorder(recorder); setIsRecording(true);
-    } catch (err) { alert("الميكروفون غير متاح 🎤"); }
+    } catch (err) { showToast("الميكروفون غير متاح 🎤"); }
   };
   const handleDrag = (e) => { if (!isRecording) return; if ((e.touches ? e.touches[0].clientX : e.clientX) - touchStartPos.current > 70) setIsCancelled(true); else setIsCancelled(false); };
   const stopRecording = () => { if (mediaRecorder) { mediaRecorder.stop(); setIsRecording(false); } };
 
   const handlePublish = (e) => {
     e.preventDefault();
-    if (!newProduct.image || !newProduct.name || !newProduct.phone || !newProduct.price) return alert("البيانات ناقصة 🚀");
+    if (!newProduct.image || !newProduct.name || !newProduct.phone || !newProduct.price) return showToast("⚠️ من فضلك أكمل البيانات");
     setUploading(true);
     push(ref(db, 'products'), { ...newProduct, sellerId: user.uid, sellerName: user.displayName, date: new Date().toISOString() })
-    .then(() => { setUploading(false); setShowModal(false); setNewProduct({ name: '', price: '', desc: '', condition: 'new', image: null, phone: '', category: 'تكييفات' }); alert("تم النشر ✅"); });
+    .then(() => { 
+        setUploading(false); 
+        setShowModal(false); 
+        setNewProduct({ name: '', price: '', desc: '', condition: 'new', image: null, phone: '', category: 'تكييفات' }); 
+        showToast("✅ تم نشر الإعلان بنجاح"); 
+    });
   };
 
   const handleSearchChange = (e) => { 
@@ -197,7 +210,6 @@ export default function Dashboard({ user }) {
                             <div key={i} className={`flex ${msg.fromId === user.uid ? 'justify-end' : 'justify-start'}`}>
                                <div className={`p-4 rounded-[1.5rem] max-w-[85%] shadow-sm ${msg.fromId === user.uid ? 'bg-zinc-900 text-white rounded-tr-none' : 'bg-white text-black border rounded-tl-none'}`}>
                                   {msg.text && <p className="text-sm font-bold">{msg.text}</p>}
-                                  <p className="text-[9px] opacity-40 mt-1">{new Date(msg.date).toLocaleTimeString()}</p>
                                </div>
                             </div>
                          ))}
@@ -222,18 +234,21 @@ export default function Dashboard({ user }) {
   return (
     <div className="min-h-screen bg-zinc-50 pb-24 font-cairo select-none" dir="rtl">
       
-      {/* ✅✅✅ شاشة الترحيب رجعت هنا أهي ✅✅✅ */}
+      {/* ✅✅✅ الإشعار الجديد الشيك (TOAST) ✅✅✅ */}
+      {notification.show && (
+        <div className="fixed top-20 left-1/2 transform -translate-x-1/2 z-[9999] animate-bounce">
+            <div className="bg-yellow-400 text-black px-8 py-3 rounded-full font-black shadow-[0_10px_20px_rgba(255,215,0,0.3)] flex items-center gap-2 text-sm border-2 border-black">
+                <span>🔔</span> {notification.msg}
+            </div>
+        </div>
+      )}
+
       {showSplash && (
         <div className="fixed inset-0 bg-black z-[999] flex flex-col items-center justify-center animate-fadeOut" style={{animationDelay: '3s', animationFillMode: 'forwards'}}>
-           <div className="w-24 h-24 bg-yellow-400 rounded-full flex items-center justify-center border-4 border-white shadow-[0_0_50px_rgba(255,215,0,0.5)] animate-bounce">
-              <span className="text-black text-5xl font-black italic">W</span>
-           </div>
+           <div className="w-24 h-24 bg-yellow-400 rounded-full flex items-center justify-center border-4 border-white shadow-[0_0_50px_rgba(255,215,0,0.5)] animate-bounce"><span className="text-black text-5xl font-black italic">W</span></div>
            <h1 className="text-yellow-400 font-black text-3xl mt-6 tracking-tighter uppercase italic">AL-WARSHA</h1>
            <p className="text-zinc-500 text-sm mt-2 font-bold tracking-widest">EST. 2026</p>
-           <div className="mt-10 text-center animate-pulse">
-              <p className="text-white text-xl font-bold">مرحباً بك يا</p>
-              <p className="text-yellow-400 text-2xl font-black mt-2">{user.displayName} ❤️</p>
-           </div>
+           <div className="mt-10 text-center animate-pulse"><p className="text-white text-xl font-bold">مرحباً بك يا</p><p className="text-yellow-400 text-2xl font-black mt-2">{user.displayName} ❤️</p></div>
         </div>
       )}
 
@@ -266,11 +281,11 @@ export default function Dashboard({ user }) {
                 
                 {showSearchSuggestions && (
                     <>
-                        <div className="fixed inset-0 z-[55] cursor-pointer bg-black/10 backdrop-blur-[1px]" onClick={() => setShowSearchSuggestions(false)}></div>
+                        <div className="fixed inset-0 z-[55] bg-black/10 backdrop-blur-[1px]" onClick={() => setShowSearchSuggestions(false)}></div>
                         <div className="absolute top-[50px] left-4 right-4 bg-zinc-900 rounded-2xl mt-2 p-2 shadow-2xl z-[60] border border-zinc-800 max-h-60 overflow-y-auto animate-slideDown">
                             <div className="flex justify-between items-center px-3 py-2 border-b border-zinc-800 mb-2">
-                                <span className="text-zinc-500 text-[10px]">نتائج البحث</span>
-                                <button onClick={() => setShowSearchSuggestions(false)} className="bg-red-500 text-white px-2 py-1 rounded text-[10px] font-bold hover:bg-red-600">إغلاق ×</button>
+                                <span className="text-zinc-500 text-[10px]">النتائج</span>
+                                <button onClick={() => setShowSearchSuggestions(false)} className="bg-red-500 text-white px-3 py-1 rounded-lg text-[10px] font-bold hover:bg-red-600 shadow-md">إغلاق ❌</button>
                             </div>
                             {categories.map(cat => (
                                 <button key={cat.id} className="w-full text-right p-3 text-sm hover:bg-zinc-800 rounded-xl transition-colors font-bold text-white flex justify-between items-center" onClick={() => {setSearchTerm(cat.name); setShowSearchSuggestions(false);}}>
@@ -282,8 +297,8 @@ export default function Dashboard({ user }) {
                     </>
                 )}
                 
-                <div className="bg-white shadow-sm border-b py-4 overflow-x-auto no-scrollbar sticky top-[125px] z-40 animate-slideDown">
-                  <div className="container mx-auto px-4 flex gap-4">
+                <div className="bg-white shadow-sm border-b py-4 sticky top-[70px] z-40 animate-slideDown">
+                  <div className="flex gap-4 overflow-x-auto no-scrollbar px-4 pb-2">
                     <button onClick={() => setSelectedCategory('all')} className={`flex-shrink-0 w-24 aspect-[4/6] rounded-[1.5rem] flex flex-col items-center justify-center border-2 transition-all ${selectedCategory === 'all' ? 'border-yellow-400 bg-yellow-50 shadow-lg' : 'border-zinc-100 bg-zinc-50 opacity-60'}`}>
                       <span className="text-2xl mb-2">🌍</span><span className="text-[10px] font-black">الكل</span>
                     </button>
@@ -316,19 +331,13 @@ export default function Dashboard({ user }) {
           </>
         )}
 
+        {/* ... (باقي الصفحات) ... */}
+        
         {activeTab === 'inbox' && (
           <div className="max-w-2xl mx-auto space-y-4">
             <h2 className="text-2xl font-black mb-6 text-right pr-3 border-r-4 border-yellow-400 italic">بريد الورشة 📩</h2>
             {uniqueConversations.length === 0 ? <p className="text-center text-zinc-400 py-10 font-bold">صندوق الوارد فارغ 📭</p> :
-                uniqueConversations.sort((a,b) => {
-                    const idA = a.fromId === user.uid ? a.toId : a.fromId;
-                    const idB = b.fromId === user.uid ? b.toId : b.fromId;
-                    const isPinnedA = pinnedChats.includes(idA);
-                    const isPinnedB = pinnedChats.includes(idB);
-                    if (isPinnedA && !isPinnedB) return -1;
-                    if (!isPinnedA && isPinnedB) return 1;
-                    return new Date(b.date) - new Date(a.date);
-                }).map(chat => {
+                uniqueConversations.sort((a,b) => new Date(b.date) - new Date(a.date)).map(chat => {
                     const otherId = chat.fromId === user.uid ? chat.toId : chat.fromId;
                     const isPinned = pinnedChats.includes(otherId);
                     return (
@@ -336,7 +345,7 @@ export default function Dashboard({ user }) {
                             <button onClick={() => deleteConversation(otherId)} className="bg-red-50 text-red-500 w-12 h-20 rounded-2xl flex items-center justify-center shadow-sm active:scale-95 transition-all">🗑️</button>
                             <div 
                                 onContextMenu={(e) => { e.preventDefault(); }}
-                                onTouchStart={() => handleTouchStart(otherId, chat.fromName)} onTouchEnd={handleTouchEnd} onMouseDown={() => handleTouchStart(otherId, chat.fromName)} onMouseUp={handleTouchEnd}
+                                onTouchStart={() => handleTouchStart(otherId, chat.fromName)} onTouchEnd={handleTouchEnd}
                                 onClick={() => { if (!readChats.includes(otherId)) setReadChats([...readChats, otherId]); setMessageModal({ show: true, receiverId: otherId, receiverName: chat.fromName }); }}
                                 className={`flex-1 bg-white p-6 rounded-[2rem] border flex items-center gap-5 cursor-pointer hover:border-yellow-400 transition-all shadow-sm ${isPinned ? 'border-yellow-400 ring-2 ring-yellow-100 bg-yellow-50' : ''}`}
                             >
@@ -374,7 +383,8 @@ export default function Dashboard({ user }) {
                     const chatData = { fromName: user.displayName, fromId: user.uid, text: supportMsg, date: new Date().toISOString() };
                     push(ref(db, `messages/Admin`), chatData); 
                     push(ref(db, `messages/${user.uid}`), { ...chatData, toId: 'Admin' });
-                    setSupportMsg(''); alert("تم الإرسال للدعم ✅");
+                    setSupportMsg(''); 
+                    showToast("✅ تم إرسال رسالتك للدعم");
                 }} className="w-full bg-zinc-950 text-white py-4 rounded-2xl font-black shadow-lg">إرسال للمدير</button>
             </div>
           </div>
@@ -395,10 +405,12 @@ export default function Dashboard({ user }) {
             </div>
           </div>
         )}
-      </main>
 
-      {/* --- المودالات --- */}
-      {messageModal.show && (
+        {optionsModal.show && (<div className="fixed inset-0 bg-black/50 z-[200] flex items-center justify-center p-4 backdrop-blur-sm" onClick={() => setOptionsModal({ ...optionsModal, show: false })}><div className="bg-white w-full max-w-sm p-6 rounded-[2rem] shadow-2xl animate-slideUp text-center space-y-4" onClick={(e) => e.stopPropagation()}><h3 className="font-black text-lg mb-4">خيارات ⚙️</h3><button onClick={handlePin} className="w-full bg-yellow-100 text-yellow-700 py-4 rounded-xl font-bold flex items-center justify-center gap-2 hover:bg-yellow-200">{pinnedChats.includes(optionsModal.targetId) ? '❌ إلغاء التثبيت' : '📌 تثبيت'}</button><button onClick={handleReport} className="w-full bg-red-50 text-red-600 py-4 rounded-xl font-bold flex items-center justify-center gap-2 hover:bg-red-100">🚨 إبلاغ</button><button onClick={() => setOptionsModal({ ...optionsModal, show: false })} className="w-full text-zinc-400 text-xs font-bold pt-2">إلغاء</button></div></div>)}
+        {!['inbox', 'profile', 'support'].includes(activeTab) && <button onClick={() => setShowModal(true)} className="fixed bottom-10 left-10 w-20 h-20 bg-yellow-400 text-black rounded-full shadow-[0_10px_40px_rgba(255,215,0,0.4)] text-4xl font-black z-[100] border-4 border-white hover:scale-110 active:scale-90 transition-all flex items-center justify-center shadow-lg shadow-yellow-400/20">+</button>}
+        
+        {showModal && <div className="fixed inset-0 bg-black/80 z-[120] flex items-center justify-center p-4 backdrop-blur-sm"><div className="bg-white w-full max-w-lg p-8 rounded-[2.5rem] relative overflow-y-auto max-h-[90vh] shadow-2xl animate-slideUp"><button onClick={() => setShowModal(false)} className="absolute top-6 left-6 text-2xl text-zinc-300 hover:text-black">&times;</button><h2 className="text-xl font-black mb-6 text-center italic">إضافة جهاز 🚀</h2><form onSubmit={handlePublish} className="space-y-4 font-bold"><div className="border-2 border-dashed border-zinc-200 rounded-2xl p-4 text-center cursor-pointer relative hover:bg-zinc-50"><input type="file" accept="image/*" onChange={(e) => {const file = e.target.files[0];const reader = new FileReader();reader.onloadend = () => setNewProduct({ ...newProduct, image: reader.result });reader.readAsDataURL(file);}} className="absolute inset-0 w-full h-full opacity-0 cursor-pointer" />{newProduct.image ? <img src={newProduct.image} className="h-40 mx-auto rounded-xl shadow-md object-contain" /> : <p className="text-xs text-zinc-400 py-10 font-black">ارفع صورة 📸</p>}</div><input placeholder="الاسم" className="w-full bg-zinc-100 p-4 rounded-xl outline-none text-sm font-bold" value={newProduct.name} onChange={e => setNewProduct({...newProduct, name: e.target.value})} /><select className="w-full bg-zinc-100 p-4 rounded-xl font-bold text-sm outline-none" value={newProduct.category} onChange={e => setNewProduct({...newProduct, category: e.target.value})}>{categories.map(cat => <option key={cat.id} value={cat.name}>{cat.name}</option>)}</select><div className="flex gap-2"><input placeholder="السعر" className="flex-1 bg-zinc-100 p-4 rounded-xl outline-none font-bold text-sm" value={newProduct.price} onChange={e => setNewProduct({...newProduct, price: e.target.value})} /><select className="bg-zinc-100 p-4 rounded-xl font-bold text-sm outline-none" value={newProduct.condition} onChange={e => setNewProduct({...newProduct, condition: e.target.value})}><option value="new">✨ جديد</option><option value="used">🛠️ مستعمل</option></select></div><input placeholder="الموبايل" className="w-full bg-zinc-100 p-4 rounded-xl outline-none font-bold text-sm" value={newProduct.phone} onChange={e => setNewProduct({...newProduct, phone: e.target.value})} /><button type="submit" disabled={uploading} className="w-full bg-yellow-400 py-4 rounded-2xl font-black shadow-lg">نشر الآن ✅</button></form></div></div>}
+        {messageModal.show && (
         <div className="fixed inset-0 bg-black/95 z-[150] flex items-center justify-center p-0 md:p-6 backdrop-blur-md">
           <div className="bg-white w-full max-w-lg h-full md:h-[85vh] md:rounded-[3rem] flex flex-col shadow-2xl relative animate-slideUp">
             <div className="p-6 border-b flex justify-between items-center bg-zinc-50 md:rounded-t-[3rem]">
@@ -426,8 +438,9 @@ export default function Dashboard({ user }) {
           </div>
         </div>
       )}
+      {viewImage && <div className="fixed inset-0 bg-black/98 z-[200] flex items-center justify-center p-4 animate-fadeIn" onClick={() => setViewImage(null)}><img src={viewImage} className="max-w-full max-h-full rounded-2xl shadow-2xl animate-zoomIn" alt="full view" /><button className="absolute top-8 left-8 text-white text-5xl hover:text-yellow-400 transition-colors">&times;</button></div>}
       
-      {optionsModal.show && (<div className="fixed inset-0 bg-black/50 z-[200] flex items-center justify-center p-4 backdrop-blur-sm" onClick={() => setOptionsModal({ ...optionsModal, show: false })}><div className="bg-white w-full max-w-sm p-6 rounded-[2rem] shadow-2xl animate-slideUp text-center space-y-4" onClick={(e) => e.stopPropagation()}><h3 className="font-black text-lg mb-4">خيارات ⚙️</h3><button onClick={handlePin} className="w-full bg-yellow-100 text-yellow-700 py-4 rounded-xl font-bold flex items-center justify-center gap-2 hover:bg-yellow-200">{pinnedChats.includes(optionsModal.targetId) ? '❌ إلغاء التثبيت' : '📌 تثبيت'}</button><button onClick={handleReport} className="w-full bg-red-50 text-red-600 py-4 rounded-xl font-bold flex items-center justify-center gap-2 hover:bg-red-100">🚨 إبلاغ</button><button onClick={() => setOptionsModal({ ...optionsModal, show: false })} className="w-full text-zinc-400 text-xs font-bold pt-2">إلغاء</button></div></div>)}
-      {!['inbox', 'profile', 'support'].includes(activeTab) && <button onClick={() => setShowModal(true)} className="fixed bottom-10 left-10 w-20 h-20 bg-yellow-400 text-black rounded-full shadow-[0_10px_40px_rgba(255,215,0,0.4)] text-4xl font-black z-[100] border-4 border-white hover:scale-110 active:scale-90 transition-all flex items-center justify-center shadow-lg shadow-yellow-400/20">+</button>}
-      {showModal && <div className="fixed inset-0 bg-black/80 z-[120] flex items-center justify-center p-4 backdrop-blur-sm"><div className="bg-white w-full max-w-lg p-8 rounded-[2.5rem] relative overflow-y-auto max-h-[90vh] shadow-2xl animate-slideUp"><button onClick={() => setShowModal(false)} className="absolute top-6 left-6 text-2xl text-zinc-300 hover:text-black">&times;</button><h2 className="text-xl font-black mb-6 text-center italic">إضافة جهاز 🚀</h2><form onSubmit={handlePublish} className="space-y-4 font-bold"><div className="border-2 border-dashed border-zinc-200 rounded-2xl p-4 text-center cursor-pointer relative hover:bg-zinc-50"><input type="file" accept="image/*" onChange={(e) => {const file = e.target.files[0];const reader = new FileReader();reader.onloadend = () => setNewProduct({ ...newProduct, image: reader.result });reader.readAsDataURL(file);}} className="absolute inset-0 w-full h-full opacity-0 cursor-pointer" />{newProduct.image ? <img src={newProduct.image} className="h-40 mx-auto rounded-xl shadow-md object-contain" /> : <p className="text-xs text-zinc-400 py-10 font-black">ارفع صورة 📸</p>}</div><input placeholder="الاسم" className="w-full bg-zinc-100 p-4 rounded-xl outline-none text-sm font-bold" value={newProduct.name} onChange={e => setNewProduct({...newProduct, name: e.target.value})} /><select className="w-full bg-zinc-100 p-4 rounded-xl font-bold text-sm outline-none" value={newProduct.category} onChange={e => setNewProduct({...newProduct, category: e.target.value})}>{categories.map(cat => <option key={cat.id} value={cat.name}>{cat.name}</option>)}</select><div className="flex gap-2"><input placeholder="السعر" className="flex-1 bg-zinc-100 p-4 rounded-xl outline-none font-bold text-sm" value={newProduct.price} onChange={e => setNewProduct({...newProduct, price: e.target.value})} /><select className="bg-zinc-100 p-4 rounded-xl font-bold text-sm outline-none" value={newProduct.condition} onChange={e => setNewProduct({...newProduct, condition: e.target.value})}><option value="new">✨ جديد</option><option value="used">🛠️ مستعمل</option></select></div><input placeholder="الموبايل" className="w-full bg-zinc-100 p-4 rounded-xl outline-none font-bold text-sm" value={newProduct.phone} onChange={e => setNewProduct({...newProduct, phone: e.target.value})} /><button type="submit" disabled={uploading} className="w-full bg-yellow-400 py-4 rounded-2xl font-black shadow-lg">نشر الآن ✅</button></form></div></div>}
-      {viewImage && <div className="fixed inset-0 bg-black/98 z-[200] flex items-center justify-center p-4 animate-fadeIn" onClick={() => setViewImage(null)}><img src={viewImage} className="max-w-full max-h-full rounded-2xl shadow-2xl animate-zoomIn" alt="full view" /><button className="
+      <footer className="text-center pb-10 pt-4 opacity-40"><p className="text-[12px] text-zinc-400 font-black uppercase tracking-[0.4em] italic italic font-cairo">AHMED • EST. 2026</p></footer>
+    </div>
+  );
+}
