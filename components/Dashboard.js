@@ -77,7 +77,6 @@ export default function Dashboard({ user }) {
   const [uploading, setUploading] = useState(false);
   const [msgText, setMsgText] = useState('');
 
-  // القائمة الكاملة كما كانت
   const categories = [
     { id: 'parts', name: 'قطع غيار', img: '/parts.jpg' },
     { id: 'heater', name: 'سخانات', img: '/heater (1).jpg' },
@@ -123,7 +122,6 @@ export default function Dashboard({ user }) {
 
   const uniqueConversations = [...new Map(myMessages.filter(m => m.fromId !== 'Admin' && m.toId !== 'Admin').map(m => [m.fromId === user.uid ? m.toId : m.fromId, m])).values()];
 
-  // دالة لإصلاح مشكلة الوقت في الشات (تمنع الكراش)
   const formatTime = (dateString) => {
       try {
           return new Date(dateString || Date.now()).toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'});
@@ -147,7 +145,7 @@ export default function Dashboard({ user }) {
         </div>
       )}
 
-      {/* Header */}
+      {/* Header (تم إضافة زر الدعم 🎧) */}
       <header className="bg-white/80 backdrop-blur-md shadow-sm sticky top-0 z-50 border-b border-zinc-100 p-4">
         <div className="container mx-auto flex justify-between items-center">
           <div className="flex items-center gap-2 cursor-pointer group" onClick={() => setActiveTab('home')}>
@@ -156,6 +154,8 @@ export default function Dashboard({ user }) {
           </div>
           <div className="flex items-center gap-3">
              <button onClick={() => setActiveTab('cart')} className={`p-3 rounded-2xl transition-all ${activeTab === 'cart' ? 'bg-yellow-400 text-black shadow-lg shadow-yellow-400/30' : 'bg-zinc-100 text-zinc-400'}`}>🛒</button>
+             {/* زر الدعم أضيف هنا 👇 */}
+             <button onClick={() => setActiveTab('support')} className={`p-3 rounded-2xl transition-all ${activeTab === 'support' ? 'bg-yellow-400 text-black shadow-lg shadow-yellow-400/30' : 'bg-zinc-100 text-zinc-400'}`}>🎧</button>
              <button onClick={() => setActiveTab('inbox')} className={`p-3 rounded-2xl relative transition-all ${activeTab === 'inbox' ? 'bg-yellow-400 text-black shadow-lg shadow-yellow-400/30' : 'bg-zinc-100 text-zinc-400'}`}>
                 📩 {uniqueConversations.length > 0 && <span className="absolute -top-1 -right-1 bg-red-500 text-white text-[9px] w-4 h-4 rounded-full flex items-center justify-center border-2 border-white animate-pulse">!</span>}
              </button>
@@ -172,12 +172,11 @@ export default function Dashboard({ user }) {
                 <span className="absolute left-5 top-5 text-2xl opacity-20">🔍</span>
             </div>
             
-            {/* تم إرجاع الأقسام كاملة */}
             <div className="flex gap-4 overflow-x-auto no-scrollbar pb-8 px-2">
-                <button onClick={() => {}} className={`flex-shrink-0 w-24 h-32 rounded-[2rem] flex flex-col items-center justify-center border-2 transition-all border-yellow-400 bg-yellow-400 shadow-lg shadow-yellow-400/30 scale-105`}><span className="text-3xl mb-2">🌍</span><span className="text-[10px] font-black">الكل</span></button>
+                <button onClick={() => setSelectedCategory('all')} className={`flex-shrink-0 w-24 h-32 rounded-[2rem] flex flex-col items-center justify-center border-2 transition-all ${selectedCategory === 'all' ? 'border-yellow-400 bg-yellow-400 shadow-lg shadow-yellow-400/30 scale-105' : 'border-white bg-white shadow-sm opacity-60'}`}><span className="text-3xl mb-2">🌍</span><span className="text-[10px] font-black">الكل</span></button>
                 {categories.map(cat => (
-                    <div key={cat.id} className={`flex-shrink-0 w-24 h-32 rounded-[2rem] relative overflow-hidden cursor-pointer border-4 transition-all shadow-md border-white opacity-80 hover:opacity-100 hover:scale-105`}>
-                        <img src={cat.img} className="w-full h-full object-cover" alt={cat.name} />
+                    <div key={cat.id} onClick={() => setSelectedCategory(cat.name)} className={`flex-shrink-0 w-24 h-32 rounded-[2rem] relative overflow-hidden cursor-pointer border-4 transition-all shadow-md ${selectedCategory === cat.name ? 'border-yellow-400 scale-105' : 'border-white opacity-80'}`}>
+                        <img src={cat.img} className="w-full h-full object-cover" />
                         <div className="absolute inset-0 bg-gradient-to-t from-black/80 to-transparent flex items-end justify-center p-3 text-center"><span className="text-white text-[10px] font-black">{cat.name}</span></div>
                     </div>
                 ))}
@@ -191,7 +190,6 @@ export default function Dashboard({ user }) {
           </>
         )}
 
-        {/* البريد (تم إصلاح المشكلة) */}
         {activeTab === 'inbox' && (
             <div className="max-w-2xl mx-auto space-y-4 animate-fadeIn">
                 <h2 className="text-3xl font-black mb-8 text-right px-4">الرسائل <span className="text-yellow-400">.</span></h2>
@@ -212,12 +210,10 @@ export default function Dashboard({ user }) {
             </div>
         )}
 
-        {/* العربة (مع زر تم البيع وحذف) */}
         {activeTab === 'cart' && (
             <div className="max-w-2xl mx-auto space-y-10 animate-fadeIn">
                 <h2 className="text-3xl font-black text-right px-4">متابعة الطلبات <span className="text-yellow-400">.</span></h2>
                 
-                {/* قسم البائع (أنا ببيع) */}
                 <div className="space-y-4">
                     <h3 className="font-black text-zinc-400 text-xs px-4 uppercase tracking-widest">طلبات واردة (ناس عايزة تشتري مني)</h3>
                     {orders.filter(o => o.sellerId === user.uid).length === 0 && <p className="text-center text-zinc-300 text-xs font-bold py-4">مفيش طلبات جديدة</p>}
@@ -245,7 +241,6 @@ export default function Dashboard({ user }) {
                                 </div>
                             ) : order.status === 'delivering' ? (
                                 <div className="grid grid-cols-2 gap-3">
-                                    {/* زر تم البيع موجود هنا بوضوح */}
                                     <button onClick={() => {update(ref(db, `products/${order.productId}`), { status: 'sold' }); update(ref(db, `orders/${order.id}`), { status: 'delivered' }); showToast("🤝 مبروك! تم تسجيل المنتج كمباع");}} className="col-span-2 bg-green-500 text-white py-4 rounded-2xl font-black text-xs shadow-lg shadow-green-500/20 hover:scale-[1.02] transition-transform">✅ تأكيد البيع (وصلت واستلمت الفلوس)</button>
                                     <button onClick={() => setMessageModal({ show: true, receiverId: order.buyerId, receiverName: order.buyerName })} className="bg-zinc-800 text-white py-3 rounded-2xl font-black text-[10px]">💬 كلم المشتري</button>
                                 </div>
@@ -254,7 +249,6 @@ export default function Dashboard({ user }) {
                     ))}
                 </div>
 
-                {/* قسم المشتري (أنا بشتري) */}
                 <div className="space-y-4">
                     <h3 className="font-black text-zinc-400 text-xs px-4 uppercase tracking-widest">مشترياتي</h3>
                     {orders.filter(o => o.buyerId === user.uid).reverse().map(order => (
@@ -269,7 +263,6 @@ export default function Dashboard({ user }) {
                                         </p>
                                     </div>
                                 </div>
-                                {/* زر الحذف موجود هنا */}
                                 {order.status === 'delivered' && (
                                     <button onClick={() => remove(ref(db, `orders/${order.id}`))} className="bg-red-50 text-red-500 w-10 h-10 rounded-full flex items-center justify-center hover:bg-red-500 hover:text-white transition-all shadow-md font-bold">✕</button>
                                 )}
@@ -280,11 +273,12 @@ export default function Dashboard({ user }) {
             </div>
         )}
 
-        {/* باقي التابات (Support & Profile) */}
+        {/* Support Section (تم التأكد من وجوده) */}
         {activeTab === 'support' && (
             <div className="max-w-md mx-auto text-center space-y-6 pt-10">
                 <div className="w-20 h-20 bg-zinc-100 rounded-full mx-auto flex items-center justify-center text-4xl shadow-inner">🎧</div>
                 <h2 className="text-2xl font-black text-zinc-900">مشكلة فنية؟</h2>
+                <p className="text-zinc-400 text-xs font-bold px-10">فريق الدعم متاح 24 ساعة للرد على استفساراتك وحل أي مشكلة تواجهك في الورشة.</p>
                 <div className="bg-white p-2 rounded-[2.5rem] shadow-xl border border-zinc-100">
                     <textarea className="w-full bg-transparent p-6 min-h-[200px] outline-none font-bold text-zinc-700 text-sm resize-none" placeholder="اكتب تفاصيل المشكلة هنا..." value={supportMsg} onChange={(e) => setSupportMsg(e.target.value)} />
                     <button onClick={() => { if(!supportMsg) return; push(ref(db, 'messages/Admin'), { fromName: user.displayName, fromId: user.uid, text: supportMsg, date: new Date().toISOString() }); setSupportMsg(''); showToast("✅ تم استلام رسالتك"); }} className="w-full bg-zinc-900 text-white py-5 rounded-[2rem] font-black hover:bg-yellow-400 hover:text-black transition-colors">إرسال البلاغ</button>
@@ -326,7 +320,7 @@ export default function Dashboard({ user }) {
         </div>
       )}
 
-      {/* مودال النشر (التصميم الفخم اللي طلبه المستخدم) */}
+      {/* مودال النشر */}
       {showModal && (
         <div className="fixed inset-0 bg-zinc-900/90 z-[120] flex items-center justify-center p-4 backdrop-blur-md">
           <div className="bg-white w-full max-w-lg p-8 rounded-[3rem] shadow-2xl overflow-y-auto max-h-[90vh] animate-slideUp relative">
@@ -339,7 +333,6 @@ export default function Dashboard({ user }) {
                 push(ref(db, 'products'), { ...newProduct, sellerId: user.uid, sellerName: user.displayName, status: 'available', date: new Date().toISOString() })
                 .then(() => { setUploading(false); setShowModal(false); showToast("✅ تم النشر في الورشة"); });
             }}>
-              {/* رفع الصور بتصميم منقط وشيك */}
               <div className="border-4 border-dashed border-zinc-200 rounded-[2.5rem] p-8 text-center cursor-pointer hover:bg-zinc-50 hover:border-yellow-400 transition-all relative group">
                  <input type="file" accept="image/*" className="absolute inset-0 opacity-0 cursor-pointer z-10" onChange={(e) => {const r = new FileReader(); r.onloadend = () => setNewProduct({...newProduct, image: r.result}); r.readAsDataURL(e.target.files[0]);}} />
                  {newProduct.image ? <img src={newProduct.image} className="h-48 mx-auto rounded-2xl shadow-lg object-contain" /> : (
