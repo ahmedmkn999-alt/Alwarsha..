@@ -9,7 +9,7 @@ export default function Dashboard({ user }) {
   const [activeTab, setActiveTab] = useState('home'); 
   const [selectedCategory, setSelectedCategory] = useState('all'); 
   const [searchTerm, setSearchTerm] = useState('');
-  const [showSearchSuggestions, setShowSearchSuggestions] = useState(false); // دي المسؤولة عن القائمة
+  const [showSearchSuggestions, setShowSearchSuggestions] = useState(false);
   const [isBanned, setIsBanned] = useState(false); 
   const [showBannedChat, setShowBannedChat] = useState(false);
   
@@ -57,6 +57,8 @@ export default function Dashboard({ user }) {
   useEffect(() => {
     const timer = setTimeout(() => setShowSplash(false), 3500);
     const head = document.getElementsByTagName('head')[0];
+    
+    // AdSense
     const adsScript = document.createElement('script');
     adsScript.src = "https://pagead2.googlesyndication.com/pagead/js/adsbygoogle.js?client=ca-pub-7765309726770552";
     adsScript.async = true;
@@ -159,19 +161,9 @@ export default function Dashboard({ user }) {
     .then(() => { setUploading(false); setShowModal(false); setNewProduct({ name: '', price: '', desc: '', condition: 'new', image: null, phone: '', category: 'تكييفات' }); alert("تم النشر ✅"); });
   };
 
-  // --- الفلترة والبحث ---
-  const handleTabChange = (tab) => { setActiveTab(tab); setSelectedCategory('all'); setSearchTerm(''); };
-  
-  // ✅ دالة البحث المحسنة (بتفتح وتفلتر)
   const handleSearchChange = (e) => { 
       setSearchTerm(e.target.value); 
-      // لو الخانة مش فاضية -> افتح القائمة
-      // لو فاضية -> اقفلها
-      if (e.target.value.trim() !== '') { 
-          setShowSearchSuggestions(true); 
-      } else {
-          setShowSearchSuggestions(false);
-      }
+      if (e.target.value.trim() !== '') { setShowSearchSuggestions(true); } else { setShowSearchSuggestions(false); }
   };
   
   const filtered = products.filter(p => {
@@ -185,16 +177,44 @@ export default function Dashboard({ user }) {
   const uniqueConversations = [...new Map(myMessages.filter(m => m.fromId !== 'Admin' && m.toId !== 'Admin').map(m => [m.fromId === user.uid ? m.toId : m.fromId, m])).values()];
   const unreadCount = uniqueConversations.filter(c => c.fromId !== user.uid && !readChats.includes(c.fromId)).length;
 
-  // ----------------------------------------------------------------------------------
-  // 🚫 شاشة الحظر 🚫
+  // 🚫 شاشة الحظر
   if (isBanned) {
       return (
           <div className="fixed inset-0 bg-black z-[9999] flex flex-col items-center justify-center p-6 text-center animate-fadeIn font-cairo" dir="rtl">
-              {/* ... (نفس كود الحظر السابق) ... */}
-              <h1 className="text-red-600 text-4xl font-black mb-4">AL-WARSHA</h1>
+              <div className="w-32 h-32 bg-yellow-400 rounded-full flex items-center justify-center border-4 border-white shadow-[0_0_50px_rgba(255,0,0,0.5)] mb-8 animate-pulse"><span className="text-black text-6xl font-black italic">W</span></div>
+              <h1 className="text-red-600 text-4xl font-black mb-4 tracking-tighter italic">AL-WARSHA</h1>
               <h2 className="text-white text-2xl font-bold mb-2">تم حظرك يا {user.displayName} 🚫</h2>
+              <p className="text-zinc-600 text-xs mb-10 font-mono tracking-widest bg-zinc-900 p-2 rounded">ID: {user.uid.slice(0,6)}</p>
+              <div className="bg-zinc-900 p-6 rounded-[2.5rem] border border-zinc-800 w-full max-w-sm mb-6"><p className="text-zinc-400 text-sm leading-relaxed">تم تعليق حسابك لمخالفة القوانين.</p></div>
               <button onClick={() => setShowBannedChat(true)} className="bg-white text-black px-10 py-4 rounded-full font-black text-lg hover:bg-yellow-400 transition-all flex items-center gap-2 shadow-xl animate-bounce">💬 تواصل مع الإدارة</button>
-              {/* ... (باقي كود الحظر) ... */}
+
+              {showBannedChat && (
+                <div className="fixed inset-0 bg-black z-[10000] flex items-center justify-center p-0 md:p-6 animate-slideUp">
+                   <div className="bg-white w-full max-w-lg h-full md:rounded-[3rem] flex flex-col overflow-hidden">
+                      <div className="p-6 bg-zinc-950 text-white flex justify-between items-center"><div className="flex items-center gap-2"><span className="w-3 h-3 bg-red-500 rounded-full animate-pulse"></span><h3 className="font-black italic">تظلم للإدارة 🛡️</h3></div><button onClick={() => setShowBannedChat(false)} className="text-3xl text-zinc-500 hover:text-white">&times;</button></div>
+                      <div className="flex-1 overflow-y-auto p-6 space-y-4 flex flex-col no-scrollbar bg-zinc-50">
+                         {myMessages.filter(m => m.fromId === 'Admin' || m.toId === 'Admin').map((msg, i) => (
+                            <div key={i} className={`flex ${msg.fromId === user.uid ? 'justify-end' : 'justify-start'}`}>
+                               <div className={`p-4 rounded-[1.5rem] max-w-[85%] shadow-sm ${msg.fromId === user.uid ? 'bg-zinc-900 text-white rounded-tr-none' : 'bg-white text-black border rounded-tl-none'}`}>
+                                  {msg.text && <p className="text-sm font-bold">{msg.text}</p>}
+                                  <p className="text-[9px] opacity-40 mt-1">{new Date(msg.date).toLocaleTimeString()}</p>
+                               </div>
+                            </div>
+                         ))}
+                      </div>
+                      <div className="p-5 bg-white border-t flex gap-2 items-center">
+                         <input className="flex-1 bg-zinc-100 p-4 rounded-2xl outline-none font-bold text-xs text-black" placeholder="اكتب رسالتك..." value={msgText} onChange={(e) => setMsgText(e.target.value)} />
+                         <button onClick={() => {
+                               if(!msgText.trim()) return;
+                               const msgData = { fromName: user.displayName, fromId: user.uid, text: msgText, date: new Date().toISOString() };
+                               push(ref(db, `messages/Admin`), msgData); 
+                               push(ref(db, `messages/${user.uid}`), { ...msgData, toId: 'Admin' });
+                               setMsgText('');
+                            }} className="bg-black text-white px-6 py-4 rounded-2xl font-black text-xs">إرسال</button>
+                      </div>
+                   </div>
+                </div>
+              )}
           </div>
       );
   }
@@ -202,9 +222,18 @@ export default function Dashboard({ user }) {
   return (
     <div className="min-h-screen bg-zinc-50 pb-24 font-cairo select-none" dir="rtl">
       
+      {/* ✅✅✅ شاشة الترحيب رجعت هنا أهي ✅✅✅ */}
       {showSplash && (
         <div className="fixed inset-0 bg-black z-[999] flex flex-col items-center justify-center animate-fadeOut" style={{animationDelay: '3s', animationFillMode: 'forwards'}}>
-           {/* ... (سبلاش سكرين) ... */}
+           <div className="w-24 h-24 bg-yellow-400 rounded-full flex items-center justify-center border-4 border-white shadow-[0_0_50px_rgba(255,215,0,0.5)] animate-bounce">
+              <span className="text-black text-5xl font-black italic">W</span>
+           </div>
+           <h1 className="text-yellow-400 font-black text-3xl mt-6 tracking-tighter uppercase italic">AL-WARSHA</h1>
+           <p className="text-zinc-500 text-sm mt-2 font-bold tracking-widest">EST. 2026</p>
+           <div className="mt-10 text-center animate-pulse">
+              <p className="text-white text-xl font-bold">مرحباً بك يا</p>
+              <p className="text-yellow-400 text-2xl font-black mt-2">{user.displayName} ❤️</p>
+           </div>
         </div>
       )}
 
@@ -230,52 +259,21 @@ export default function Dashboard({ user }) {
       </header>
 
       <main className="container mx-auto p-4 md:p-8 animate-fadeIn">
-        {/* الصفحة الرئيسية */}
         {activeTab === 'home' && (
           <>
             <div className="container mx-auto px-4 pb-3 relative">
-                {/* البحث */}
-                <input 
-                    className="w-full bg-zinc-200 border-none rounded-2xl p-3 text-xs text-black outline-none focus:ring-1 focus:ring-yellow-400 font-bold text-center mb-4 shadow-inner" 
-                    placeholder="ابحث في الورشة..." 
-                    value={searchTerm} 
-                    onFocus={() => setShowSearchSuggestions(true)} // لما تدوس تفتح
-                    onChange={handleSearchChange} 
-                />
+                <input className="w-full bg-zinc-200 border-none rounded-2xl p-3 text-xs text-black outline-none focus:ring-1 focus:ring-yellow-400 font-bold text-center mb-4 shadow-inner" placeholder="ابحث في الورشة..." value={searchTerm} onFocus={() => setShowSearchSuggestions(true)} onChange={handleSearchChange} />
                 
-                {/* ✅✅✅ قائمة البحث (المشكلة اتحلت هنا) */}
                 {showSearchSuggestions && (
                     <>
-                        {/* 1. طبقة شفافة ورا القائمة عشان لما تدوس عليها تقفل */}
-                        <div 
-                            className="fixed inset-0 z-[55] cursor-pointer bg-black/10 backdrop-blur-[1px]" 
-                            onClick={() => setShowSearchSuggestions(false)}
-                        ></div>
-
-                        {/* 2. القائمة نفسها */}
+                        <div className="fixed inset-0 z-[55] cursor-pointer bg-black/10 backdrop-blur-[1px]" onClick={() => setShowSearchSuggestions(false)}></div>
                         <div className="absolute top-[50px] left-4 right-4 bg-zinc-900 rounded-2xl mt-2 p-2 shadow-2xl z-[60] border border-zinc-800 max-h-60 overflow-y-auto animate-slideDown">
-                            
-                            {/* زر إغلاق صريح وواضح */}
                             <div className="flex justify-between items-center px-3 py-2 border-b border-zinc-800 mb-2">
                                 <span className="text-zinc-500 text-[10px]">نتائج البحث</span>
-                                <button 
-                                    onClick={() => setShowSearchSuggestions(false)}
-                                    className="bg-red-500 text-white px-2 py-1 rounded text-[10px] font-bold hover:bg-red-600"
-                                >
-                                    إغلاق ×
-                                </button>
+                                <button onClick={() => setShowSearchSuggestions(false)} className="bg-red-500 text-white px-2 py-1 rounded text-[10px] font-bold hover:bg-red-600">إغلاق ×</button>
                             </div>
-
-                            {/* النتائج */}
                             {categories.map(cat => (
-                                <button 
-                                    key={cat.id} 
-                                    className="w-full text-right p-3 text-sm hover:bg-zinc-800 rounded-xl transition-colors font-bold text-white flex justify-between items-center" 
-                                    onClick={() => {
-                                        setSearchTerm(cat.name); 
-                                        setShowSearchSuggestions(false); // تقفل بعد الاختيار
-                                    }}
-                                >
+                                <button key={cat.id} className="w-full text-right p-3 text-sm hover:bg-zinc-800 rounded-xl transition-colors font-bold text-white flex justify-between items-center" onClick={() => {setSearchTerm(cat.name); setShowSearchSuggestions(false);}}>
                                     <span>🔍 {cat.name}</span>
                                     <span className="text-[10px] text-zinc-600">قسم</span>
                                 </button>
@@ -284,7 +282,6 @@ export default function Dashboard({ user }) {
                     </>
                 )}
                 
-                {/* القائمة المتحركة (صور الأقسام) */}
                 <div className="bg-white shadow-sm border-b py-4 overflow-x-auto no-scrollbar sticky top-[125px] z-40 animate-slideDown">
                   <div className="container mx-auto px-4 flex gap-4">
                     <button onClick={() => setSelectedCategory('all')} className={`flex-shrink-0 w-24 aspect-[4/6] rounded-[1.5rem] flex flex-col items-center justify-center border-2 transition-all ${selectedCategory === 'all' ? 'border-yellow-400 bg-yellow-50 shadow-lg' : 'border-zinc-100 bg-zinc-50 opacity-60'}`}>
@@ -301,8 +298,6 @@ export default function Dashboard({ user }) {
                   </div>
                 </div>
             </div>
-
-            {/* تم حذف أزرار جديد ومستعمل */}
 
             {filtered.length > 0 ? (
                 <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8 mt-6">
@@ -321,10 +316,6 @@ export default function Dashboard({ user }) {
           </>
         )}
 
-        {/* ... (باقي التبويبات والمودالات زي ما هي بالظبط) ... */}
-        {/* ... (اختصاراً للمساحة، لكن انسخ باقي الكود من النسخة اللي فاتت لو محتاجه كامل قولي) ... */}
-        
-        {/* باقي التبويبات (Inbox, Support, Profile) */}
         {activeTab === 'inbox' && (
           <div className="max-w-2xl mx-auto space-y-4">
             <h2 className="text-2xl font-black mb-6 text-right pr-3 border-r-4 border-yellow-400 italic">بريد الورشة 📩</h2>
@@ -439,9 +430,4 @@ export default function Dashboard({ user }) {
       {optionsModal.show && (<div className="fixed inset-0 bg-black/50 z-[200] flex items-center justify-center p-4 backdrop-blur-sm" onClick={() => setOptionsModal({ ...optionsModal, show: false })}><div className="bg-white w-full max-w-sm p-6 rounded-[2rem] shadow-2xl animate-slideUp text-center space-y-4" onClick={(e) => e.stopPropagation()}><h3 className="font-black text-lg mb-4">خيارات ⚙️</h3><button onClick={handlePin} className="w-full bg-yellow-100 text-yellow-700 py-4 rounded-xl font-bold flex items-center justify-center gap-2 hover:bg-yellow-200">{pinnedChats.includes(optionsModal.targetId) ? '❌ إلغاء التثبيت' : '📌 تثبيت'}</button><button onClick={handleReport} className="w-full bg-red-50 text-red-600 py-4 rounded-xl font-bold flex items-center justify-center gap-2 hover:bg-red-100">🚨 إبلاغ</button><button onClick={() => setOptionsModal({ ...optionsModal, show: false })} className="w-full text-zinc-400 text-xs font-bold pt-2">إلغاء</button></div></div>)}
       {!['inbox', 'profile', 'support'].includes(activeTab) && <button onClick={() => setShowModal(true)} className="fixed bottom-10 left-10 w-20 h-20 bg-yellow-400 text-black rounded-full shadow-[0_10px_40px_rgba(255,215,0,0.4)] text-4xl font-black z-[100] border-4 border-white hover:scale-110 active:scale-90 transition-all flex items-center justify-center shadow-lg shadow-yellow-400/20">+</button>}
       {showModal && <div className="fixed inset-0 bg-black/80 z-[120] flex items-center justify-center p-4 backdrop-blur-sm"><div className="bg-white w-full max-w-lg p-8 rounded-[2.5rem] relative overflow-y-auto max-h-[90vh] shadow-2xl animate-slideUp"><button onClick={() => setShowModal(false)} className="absolute top-6 left-6 text-2xl text-zinc-300 hover:text-black">&times;</button><h2 className="text-xl font-black mb-6 text-center italic">إضافة جهاز 🚀</h2><form onSubmit={handlePublish} className="space-y-4 font-bold"><div className="border-2 border-dashed border-zinc-200 rounded-2xl p-4 text-center cursor-pointer relative hover:bg-zinc-50"><input type="file" accept="image/*" onChange={(e) => {const file = e.target.files[0];const reader = new FileReader();reader.onloadend = () => setNewProduct({ ...newProduct, image: reader.result });reader.readAsDataURL(file);}} className="absolute inset-0 w-full h-full opacity-0 cursor-pointer" />{newProduct.image ? <img src={newProduct.image} className="h-40 mx-auto rounded-xl shadow-md object-contain" /> : <p className="text-xs text-zinc-400 py-10 font-black">ارفع صورة 📸</p>}</div><input placeholder="الاسم" className="w-full bg-zinc-100 p-4 rounded-xl outline-none text-sm font-bold" value={newProduct.name} onChange={e => setNewProduct({...newProduct, name: e.target.value})} /><select className="w-full bg-zinc-100 p-4 rounded-xl font-bold text-sm outline-none" value={newProduct.category} onChange={e => setNewProduct({...newProduct, category: e.target.value})}>{categories.map(cat => <option key={cat.id} value={cat.name}>{cat.name}</option>)}</select><div className="flex gap-2"><input placeholder="السعر" className="flex-1 bg-zinc-100 p-4 rounded-xl outline-none font-bold text-sm" value={newProduct.price} onChange={e => setNewProduct({...newProduct, price: e.target.value})} /><select className="bg-zinc-100 p-4 rounded-xl font-bold text-sm outline-none" value={newProduct.condition} onChange={e => setNewProduct({...newProduct, condition: e.target.value})}><option value="new">✨ جديد</option><option value="used">🛠️ مستعمل</option></select></div><input placeholder="الموبايل" className="w-full bg-zinc-100 p-4 rounded-xl outline-none font-bold text-sm" value={newProduct.phone} onChange={e => setNewProduct({...newProduct, phone: e.target.value})} /><button type="submit" disabled={uploading} className="w-full bg-yellow-400 py-4 rounded-2xl font-black shadow-lg">نشر الآن ✅</button></form></div></div>}
-      {viewImage && <div className="fixed inset-0 bg-black/98 z-[200] flex items-center justify-center p-4 animate-fadeIn" onClick={() => setViewImage(null)}><img src={viewImage} className="max-w-full max-h-full rounded-2xl shadow-2xl animate-zoomIn" alt="full view" /><button className="absolute top-8 left-8 text-white text-5xl hover:text-yellow-400 transition-colors">&times;</button></div>}
-      
-      <footer className="text-center pb-10 pt-4 opacity-40"><p className="text-[12px] text-zinc-400 font-black uppercase tracking-[0.4em] italic italic font-cairo">AHMED • EST. 2026</p></footer>
-    </div>
-  );
-}
+      {viewImage && <div className="fixed inset-0 bg-black/98 z-[200] flex items-center justify-center p-4 animate-fadeIn" onClick={() => setViewImage(null)}><img src={viewImage} className="max-w-full max-h-full rounded-2xl shadow-2xl animate-zoomIn" alt="full view" /><button className="
