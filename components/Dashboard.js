@@ -3,17 +3,17 @@ import { db, auth } from '../firebaseConfig';
 import { ref, onValue, push, remove, update } from "firebase/database";
 import { signOut } from "firebase/auth";
 
-// --- 1. كارت المنتج (المحمي) ---
+// --- 1. كارت المنتج (المحمي ضد الأخطاء) ---
 const ProductCard = ({ item, onViewImage, onChat, onAddToCart, isOwner, onDelete }) => {
-  // حماية ضد البيانات الناقصة
-  if (!item) return null; 
+  // حماية: لو المنتج مش موجود ما ترسمش حاجة
+  if (!item) return null;
   const isSold = item.status === 'sold';
 
   return (
     <div className={`bg-white rounded-[2rem] border border-zinc-100 overflow-hidden shadow-sm hover:shadow-xl transition-all group relative ${isSold ? 'opacity-60 grayscale' : ''}`}>
       <div className="h-64 overflow-hidden relative bg-zinc-50">
         <img 
-          src={item.image || 'https://via.placeholder.com/300?text=No+Image'} 
+          src={item.image || 'https://via.placeholder.com/300'} 
           className="w-full h-full object-cover cursor-pointer group-hover:scale-105 transition-transform duration-700" 
           onClick={() => onViewImage(item.image)} 
           alt={item.name || 'منتج'}
@@ -95,27 +95,26 @@ export default function Dashboard({ user }) {
 
   useEffect(() => {
     const timer = setTimeout(() => setShowSplash(false), 3500);
-    if(user?.uid) {
-        // استخدام try-catch لمنع الكراش أثناء جلب البيانات
-        try {
+    
+    // استخدام try-catch داخل الـ effect لمنع الكراش
+    try {
+        if(user?.uid) {
             onValue(ref(db, 'orders'), (snap) => {
-                const data = snap.val();
-                setOrders(data ? Object.entries(data).map(([id, val]) => ({ id, ...val })) : []);
+                const data = snap.val() || {}; // حماية ضد الـ null
+                setOrders(Object.entries(data).map(([id, val]) => ({ id, ...val })));
             });
             onValue(ref(db, `messages/${user.uid}`), (snap) => {
-                const data = snap.val();
-                setMyMessages(data ? Object.entries(data).map(([id, val]) => ({ id, ...val })) : []);
+                const data = snap.val() || {}; // حماية ضد الـ null
+                setMyMessages(Object.entries(data).map(([id, val]) => ({ id, ...val })));
             });
-        } catch (error) {
-            console.error("Error fetching data:", error);
         }
-    }
-    try {
         onValue(ref(db, 'products'), (snap) => {
-            const data = snap.val();
-            setProducts(data ? Object.entries(data).map(([id, val]) => ({ id, ...val })).reverse() : []);
+            const data = snap.val() || {}; // حماية ضد الـ null
+            setProducts(Object.entries(data).map(([id, val]) => ({ id, ...val })).reverse());
         });
-    } catch (error) { console.error(error); }
+    } catch (err) {
+        console.error("Firebase Error handled:", err);
+    }
 
     return () => clearTimeout(timer);
   }, [user]);
@@ -126,14 +125,15 @@ export default function Dashboard({ user }) {
   };
 
   const filtered = products.filter(p => {
+    if (!p) return false;
     const normalize = (str) => str?.toLowerCase().replace(/[أإآ]/g, 'ا').replace(/[ة]/g, 'ه').trim() || "";
     const search = normalize(searchTerm);
     return normalize(p.name).includes(search) || normalize(p.category).includes(search);
   });
 
-  // الحماية القصوى هنا: التأكد من أن المصفوفة موجودة قبل الفلترة
+  // حماية قائمة المحادثات من البيانات البايظة
   const uniqueConversations = myMessages 
-    ? [...new Map(myMessages.filter(m => m.fromId !== 'Admin' && m.toId !== 'Admin').map(m => [m.fromId === user.uid ? m.toId : m.fromId, m])).values()]
+    ? [...new Map(myMessages.filter(m => m && m.fromId !== 'Admin' && m.toId !== 'Admin').map(m => [m.fromId === user.uid ? m.toId : m.fromId, m])).values()]
     : [];
 
   // دالة الوقت الآمنة جداً (Anti-Crash)
@@ -208,7 +208,6 @@ export default function Dashboard({ user }) {
           </>
         )}
 
-        {/* البريد (مع حماية ضد البيانات البايظة) */}
         {activeTab === 'inbox' && (
             <div className="max-w-2xl mx-auto space-y-4 animate-fadeIn">
                 <h2 className="text-3xl font-black mb-8 text-right px-4">الرسائل <span className="text-yellow-400">.</span></h2>
@@ -229,7 +228,6 @@ export default function Dashboard({ user }) {
             </div>
         )}
 
-        {/* العربة */}
         {activeTab === 'cart' && (
             <div className="max-w-2xl mx-auto space-y-10 animate-fadeIn">
                 <h2 className="text-3xl font-black text-right px-4">متابعة الطلبات <span className="text-yellow-400">.</span></h2>
@@ -295,7 +293,6 @@ export default function Dashboard({ user }) {
             </div>
         )}
 
-        {/* Support */}
         {activeTab === 'support' && (
             <div className="max-w-md mx-auto text-center space-y-6 pt-10">
                 <div className="w-20 h-20 bg-zinc-100 rounded-full mx-auto flex items-center justify-center text-4xl shadow-inner">🎧</div>
@@ -320,7 +317,7 @@ export default function Dashboard({ user }) {
         )}
       </main>
 
-      {/* مودال العنوان */}
+      {/* مودال العنوان (بديل Prompt) */}
       {addressModal.show && (
         <div className="fixed inset-0 bg-black/60 z-[200] flex items-end md:items-center justify-center p-4 backdrop-blur-sm">
             <div className="bg-white w-full max-w-md p-8 rounded-[3rem] shadow-2xl animate-slideUp">
@@ -341,7 +338,7 @@ export default function Dashboard({ user }) {
         </div>
       )}
 
-      {/* مودال النشر الفخم */}
+      {/* مودال النشر (التصميم الفخم اللي طلبه المستخدم) */}
       {showModal && (
         <div className="fixed inset-0 bg-zinc-900/90 z-[120] flex items-center justify-center p-4 backdrop-blur-md">
           <div className="bg-white w-full max-w-lg p-8 rounded-[3rem] shadow-2xl overflow-y-auto max-h-[90vh] animate-slideUp relative">
@@ -403,7 +400,7 @@ export default function Dashboard({ user }) {
                 </div>
                 
                 <div className="flex-1 overflow-y-auto p-4 space-y-3 bg-white">
-                   {(myMessages || []).filter(m => m.fromId === messageModal.receiverId || m.toId === messageModal.receiverId).sort((a,b) => (new Date(a.date || Date.now())) - (new Date(b.date || Date.now()))).map((msg, i) => (
+                   {myMessages.filter(m => m.fromId === messageModal.receiverId || m.toId === messageModal.receiverId).sort((a,b) => (new Date(a.date || Date.now())) - (new Date(b.date || Date.now()))).map((msg, i) => (
                      <div key={i} className={`flex ${msg.fromId === user.uid ? 'justify-end' : 'justify-start'}`}>
                         <div className={`p-4 rounded-2xl max-w-[80%] text-sm font-bold ${msg.fromId === user.uid ? 'bg-zinc-900 text-white rounded-br-none' : 'bg-zinc-100 text-zinc-800 rounded-bl-none'}`}>
                            {msg.text}
