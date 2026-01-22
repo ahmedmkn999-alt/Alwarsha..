@@ -24,7 +24,7 @@ const ProductCard = ({ item, onViewImage, onChat, onAddToCart, isOwner, onDelete
           {item.category}
         </div>
         {isOwner && (
-            <button onClick={() => onDelete(item.id)} className="absolute top-3 left-3 bg-red-600 text-white w-8 h-8 rounded-full flex items-center justify-center shadow-md font-bold z-10 hover:scale-110">🗑️</button>
+            <button onClick={() => onDelete(item.id)} className="absolute top-3 left-3 bg-red-600 text-white w-8 h-8 rounded-full flex items-center justify-center shadow-md font-bold z-10 hover:scale-110 transition-transform">🗑️</button>
         )}
       </div>
       <div className="p-6 text-right">
@@ -54,7 +54,7 @@ const ProductCard = ({ item, onViewImage, onChat, onAddToCart, isOwner, onDelete
 
 // --- 2. المكون الرئيسي (Dashboard) ---
 export default function Dashboard({ user }) {
-  // --- States ---
+  // States
   const [showSplash, setShowSplash] = useState(true);
   const [activeTab, setActiveTab] = useState('home'); 
   const [selectedCategory, setSelectedCategory] = useState('all'); 
@@ -63,13 +63,13 @@ export default function Dashboard({ user }) {
   const [toast, setToast] = useState({ show: false, msg: '' });
   const [isBanned, setIsBanned] = useState(false);
 
-  // --- Data ---
+  // Data
   const [products, setProducts] = useState([]);
   const [myMessages, setMyMessages] = useState([]);
   const [orders, setOrders] = useState([]);
   const [supportMsg, setSupportMsg] = useState('');
   
-  // --- UI Control ---
+  // UI Control
   const [readChats, setReadChats] = useState([]); 
   const [pinnedChats, setPinnedChats] = useState([]); 
   const [optionsModal, setOptionsModal] = useState({ show: false, targetId: '', targetName: '' });
@@ -79,18 +79,17 @@ export default function Dashboard({ user }) {
   const [messageModal, setMessageModal] = useState({ show: false, receiverId: '', receiverName: '' });
   const [deliveryFees, setDeliveryFees] = useState({});
 
-  // --- Inputs & Upload ---
+  // Inputs
   const [newProduct, setNewProduct] = useState({ name: '', price: '', desc: '', condition: 'new', image: null, phone: '', category: 'قطع غيار' });
   const [msgText, setMsgText] = useState('');
   const [chatImage, setChatImage] = useState(null);
   const [uploading, setUploading] = useState(false);
 
-  // --- Voice Logic ---
+  // Voice Recording Logic
   const [isRecording, setIsRecording] = useState(false);
   const [isCancelled, setIsCancelled] = useState(false);
   const [mediaRecorder, setMediaRecorder] = useState(null);
   const touchStartPos = useRef(0);
-  const longPressTimer = useRef(null);
 
   const categories = [
     { id: 'parts', name: 'قطع غيار', img: '/parts.jpg' },
@@ -171,14 +170,13 @@ export default function Dashboard({ user }) {
 
   return (
     <div className="min-h-screen bg-zinc-50 pb-24 font-cairo select-none overflow-x-hidden" dir="rtl">
-      {/* Toast */}
       {toast.show && <div className="fixed top-20 left-1/2 -translate-x-1/2 z-[9999] bg-yellow-400 text-black px-6 py-3 rounded-full font-black shadow-xl border-2 border-black">{toast.msg}</div>}
 
-      {/* 1. Splash Screen بالترحيب بالاسم */}
+      {/* 1. شاشة الترحيب بالاسم */}
       {showSplash && (
         <div className="fixed inset-0 bg-black z-[999] flex flex-col items-center justify-center">
            <div className="w-24 h-24 bg-yellow-400 rounded-full flex items-center justify-center border-4 border-white animate-bounce"><span className="text-black text-5xl font-black italic">W</span></div>
-           <h1 className="text-yellow-400 font-black text-3xl mt-6 italic">AL-WARSHA</h1>
+           <h1 className="text-yellow-400 font-black text-3xl mt-6 italic tracking-tighter">AL-WARSHA</h1>
            <div className="mt-10 text-center animate-pulse">
               <p className="text-white text-xl font-bold tracking-widest">مرحباً بك يا</p>
               <p className="text-yellow-400 text-2xl font-black mt-2 underline decoration-white">{user?.displayName || "يا غالي"} ❤️</p>
@@ -194,9 +192,9 @@ export default function Dashboard({ user }) {
              <span className="font-black text-yellow-400 italic">الورشة</span>
           </div>
           <div className="flex items-center gap-2">
-             <button onClick={() => setActiveTab('cart')} className={`p-2.5 rounded-xl ${activeTab === 'cart' ? 'bg-yellow-400 text-black' : 'bg-zinc-900 text-zinc-500'}`}>🛒</button>
-             <button onClick={() => setActiveTab('support')} className={`p-2.5 rounded-xl ${activeTab === 'support' ? 'bg-yellow-400 text-black' : 'bg-zinc-900 text-zinc-500'}`}>🎧</button>
-             <button onClick={() => setActiveTab('inbox')} className={`p-2.5 rounded-xl relative ${activeTab === 'inbox' ? 'bg-yellow-400 text-black' : 'bg-zinc-900 text-zinc-500'}`}>
+             <button onClick={() => setActiveTab('cart')} className={`p-2.5 rounded-xl transition-all ${activeTab === 'cart' ? 'bg-yellow-400 text-black' : 'bg-zinc-900 text-zinc-500'}`}>🛒</button>
+             <button onClick={() => setActiveTab('support')} className={`p-2.5 rounded-xl transition-all ${activeTab === 'support' ? 'bg-yellow-400 text-black' : 'bg-zinc-900 text-zinc-500'}`}>🎧</button>
+             <button onClick={() => setActiveTab('inbox')} className={`p-2.5 rounded-xl relative transition-all ${activeTab === 'inbox' ? 'bg-yellow-400 text-black' : 'bg-zinc-900 text-zinc-500'}`}>
                 📩 {uniqueConversations.length > 0 && <span className="absolute -top-1 -right-1 bg-red-600 text-white text-[9px] w-4 h-4 rounded-full flex items-center justify-center animate-pulse">!</span>}
              </button>
              <button onClick={() => setActiveTab('profile')} className="w-10 h-10 rounded-full border border-zinc-700 overflow-hidden active:scale-90"><img src={user.photoURL} className="w-full h-full object-cover" /></button>
@@ -208,25 +206,25 @@ export default function Dashboard({ user }) {
         {/* الصفحة الرئيسية والبحث */}
         {activeTab === 'home' && (
           <>
-            <input className="w-full bg-zinc-200 border-none rounded-2xl p-4 text-center font-bold mb-4 outline-none focus:ring-2 focus:ring-yellow-400" placeholder="ابحث في الورشة عن قطع غيار وأجهزة..." value={searchTerm} onFocus={() => setShowSearchSuggestions(true)} onChange={(e) => setSearchTerm(e.target.value)} />
+            <input className="w-full bg-zinc-200 border-none rounded-2xl p-4 text-center font-bold mb-4 outline-none focus:ring-2 focus:ring-yellow-400" placeholder="ابحث في الورشة..." value={searchTerm} onFocus={() => setShowSearchSuggestions(true)} onChange={(e) => setSearchTerm(e.target.value)} />
             {showSearchSuggestions && (
                 <div className="absolute top-[120px] left-8 right-8 bg-zinc-900 rounded-2xl p-3 shadow-2xl z-40 border border-zinc-800">
                     {categories.map(cat => (
                         <button key={cat.id} className="w-full text-right p-3 text-white font-bold hover:bg-zinc-800 rounded-xl" onClick={() => {setSearchTerm(cat.name); setShowSearchSuggestions(false);}}>🔍 {cat.name}</button>
                     ))}
-                    <button onClick={() => setShowSearchSuggestions(false)} className="w-full text-red-500 text-[10px] font-black py-2">إغلاق ❌</button>
+                    <button onClick={() => setShowSearchSuggestions(false)} className="w-full text-red-500 text-[10px] font-black py-2">إغلاق القائمة ❌</button>
                 </div>
             )}
             <div className="flex gap-4 overflow-x-auto no-scrollbar pb-6">
                 <button onClick={() => setSelectedCategory('all')} className={`flex-shrink-0 w-24 aspect-[4/6] rounded-[1.5rem] flex flex-col items-center justify-center border-2 transition-all ${selectedCategory === 'all' ? 'border-yellow-400 bg-yellow-50' : 'border-zinc-100 bg-zinc-50 opacity-60'}`}><span className="text-2xl mb-2">🌍</span><span className="text-[10px] font-black">الكل</span></button>
                 {categories.map(cat => (
-                    <div key={cat.id} onClick={() => setSelectedCategory(cat.name)} className={`flex-shrink-0 w-24 aspect-[4/6] rounded-[1.5rem] relative overflow-hidden border-2 transition-all ${selectedCategory === cat.name ? 'border-yellow-400' : 'border-transparent'}`}>
+                    <div key={cat.id} onClick={() => setSelectedCategory(cat.name)} className={`flex-shrink-0 w-24 aspect-[4/6] rounded-[1.5rem] relative overflow-hidden cursor-pointer border-2 transition-all ${selectedCategory === cat.name ? 'border-yellow-400' : 'border-transparent'}`}>
                         <img src={cat.img} className="w-full h-full object-cover" />
                         <div className="absolute inset-0 bg-gradient-to-t from-black/90 to-transparent flex items-end justify-center p-3 text-center"><span className="text-white text-[10px] font-black">{cat.name}</span></div>
                     </div>
                 ))}
             </div>
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8 mt-6">
                 {filtered.map(item => (
                     <ProductCard key={item.id} item={item} onViewImage={setViewImage} onChat={(it) => setMessageModal({ show: true, receiverId: it.sellerId, receiverName: it.sellerName })} onAddToCart={(p) => setAddressModal({ show: true, product: p, location: '' })} isOwner={item.sellerId === user.uid} onDelete={(id) => confirm("حذف؟") && remove(ref(db, `products/${id}`))} />
                 ))}
@@ -240,8 +238,8 @@ export default function Dashboard({ user }) {
                 <h2 className="text-2xl font-black mb-6 text-right pr-3 border-r-4 border-yellow-400 italic">بريد الورشة 📩</h2>
                 {uniqueConversations.map(chat => (
                     <div key={chat.id} className="flex gap-2 items-center">
-                        <button onClick={() => deleteConversation(chat.fromId === user.uid ? chat.toId : chat.fromId)} className="bg-red-50 text-red-500 w-12 h-20 rounded-2xl flex items-center justify-center">🗑️</button>
-                        <div onClick={() => setMessageModal({ show: true, receiverId: chat.fromId === user.uid ? chat.toId : chat.fromId, receiverName: chat.fromName })} className={`flex-1 bg-white p-6 rounded-[2rem] border flex items-center gap-5 cursor-pointer shadow-sm ${pinnedChats.includes(chat.fromId === user.uid ? chat.toId : chat.fromId) ? 'border-yellow-400 bg-yellow-50' : ''}`}>
+                        <button onClick={() => { if(confirm("مسح؟")) remove(ref(db, `messages/${user.uid}/${chat.id}`)); }} className="bg-red-50 text-red-500 w-12 h-20 rounded-2xl flex items-center justify-center">🗑️</button>
+                        <div onClick={() => setMessageModal({ show: true, receiverId: chat.fromId === user.uid ? chat.toId : chat.fromId, receiverName: chat.fromName })} className="flex-1 bg-white p-6 rounded-[2rem] border flex items-center gap-5 cursor-pointer shadow-sm">
                             <div className="w-14 h-14 rounded-full bg-zinc-950 text-yellow-400 flex items-center justify-center font-black text-xl">{chat.fromName[0]}</div>
                             <div className="flex-1 text-right"><h4 className="font-black text-zinc-900">{chat.fromName}</h4><p className="text-xs text-zinc-400 line-clamp-1">{chat.text || "رسالة وسائط"}</p></div>
                         </div>
@@ -250,7 +248,7 @@ export default function Dashboard({ user }) {
             </div>
         )}
 
-        {/* العربة المكتملة (Mark as Sold + Location Modal) */}
+        {/* العربة المكتملة */}
         {activeTab === 'cart' && (
             <div className="max-w-2xl mx-auto space-y-8 animate-fadeIn">
                 <h2 className="text-2xl font-black text-right border-r-4 border-yellow-400 pr-3 italic">متابعة العربة 🛒</h2>
@@ -259,7 +257,7 @@ export default function Dashboard({ user }) {
                     <h3 className="font-bold text-zinc-500 text-[10px] px-2 uppercase tracking-widest">طلبات بيع منتجاتي</h3>
                     {orders.filter(o => o.sellerId === user.uid).reverse().map(order => (
                         <div key={order.id} className="bg-zinc-950 text-white p-6 rounded-[2.5rem] shadow-2xl space-y-4 border-2 border-yellow-400/10">
-                            <div className="flex justify-between items-center"><h4 className="font-black text-yellow-400">{order.productName}</h4><span className="text-[9px] text-zinc-500">المشتري: {order.buyerName}</span></div>
+                            <div className="flex justify-between items-center"><h4 className="font-black text-yellow-400">{order.productName}</h4><span className="text-[9px] text-zinc-500">{order.buyerName}</span></div>
                             <div className="bg-zinc-900 p-4 rounded-2xl border border-zinc-800 text-[10px] italic">📍 المكان: <span className="text-yellow-400 font-bold underline">{order.buyerLocation}</span></div>
                             
                             {order.status === 'pending' ? (
@@ -268,8 +266,8 @@ export default function Dashboard({ user }) {
                                     <button onClick={() => update(ref(db, `orders/${order.id}`), { deliveryFee: deliveryFees[order.id], status: 'delivering' })} className="bg-yellow-400 text-black px-6 py-2 rounded-xl font-black text-[10px]">تأكيد</button>
                                 </div>
                             ) : order.status === 'delivering' ? (
-                                <button onClick={() => {update(ref(db, `products/${order.productId}`), { status: 'sold' }); update(ref(db, `orders/${order.id}`), { status: 'delivered' }); showToast("🤝 تم البيع بنجاح");}} className="w-full bg-green-500 text-white py-4 rounded-2xl font-black text-[10px] animate-pulse">تأكيد البيع والوصول (العلامة الفارقة) ✅</button>
-                            ) : <div className="w-full bg-zinc-900 py-3 rounded-2xl font-black text-[10px] text-center text-green-400 border border-green-500/20">📦 تمت البيعة بنجاح</div>}
+                                <button onClick={() => {update(ref(db, `products/${order.productId}`), { status: 'sold' }); update(ref(db, `orders/${order.id}`), { status: 'delivered' }); showToast("🤝 تم البيع");}} className="w-full bg-green-500 text-white py-4 rounded-2xl font-black text-[10px] animate-pulse">تأكيد البيع والوصول ✅</button>
+                            ) : <div className="w-full bg-zinc-900 py-3 rounded-2xl font-black text-[10px] text-center text-green-400">📦 تمت العملية بنجاح</div>}
                         </div>
                     ))}
                 </div>
@@ -282,11 +280,11 @@ export default function Dashboard({ user }) {
                                 <div className="text-right">
                                     <h4 className="font-black text-sm">{order.productName}</h4>
                                     <p className={`text-[10px] font-black mt-2 ${order.status === 'delivered' ? 'text-green-500' : 'text-zinc-500'}`}>
-                                        {order.status === 'pending' ? '⏳ قيد الرد (بانتظار السعر)' : order.status === 'delivering' ? '🚚 جاري التوصيل' : '✅ تم الوصول'}
+                                        {order.status === 'pending' ? '⏳ قيد الرد' : order.status === 'delivering' ? '🚚 جاري التوصيل' : '✅ تم الوصول'}
                                     </p>
                                 </div>
                                 {order.status === 'delivered' && (
-                                    <button onClick={() => remove(ref(db, `orders/${order.id}`))} className="bg-red-50 text-red-500 p-2 rounded-xl text-[9px] font-black border border-red-100">مسح</button>
+                                    <button onClick={() => remove(ref(db, `orders/${order.id}`))} className="bg-red-50 text-red-500 p-2 rounded-xl text-[9px] font-black">حذف</button>
                                 )}
                             </div>
                         </div>
@@ -299,7 +297,7 @@ export default function Dashboard({ user }) {
         {activeTab === 'support' && (
             <div className="max-w-md mx-auto text-center space-y-6">
                 <h2 className="text-2xl font-black italic">الدعم الفني المباشر 🎧</h2>
-                <textarea className="w-full bg-white border p-6 rounded-[2.5rem] min-h-[200px] outline-none font-bold shadow-inner" placeholder="اكتب مشكلتك هنا بوضوح..." value={supportMsg} onChange={(e) => setSupportMsg(e.target.value)} />
+                <textarea className="w-full bg-white border p-6 rounded-[2.5rem] min-h-[200px] outline-none font-bold shadow-inner" placeholder="اكتب مشكلتك..." value={supportMsg} onChange={(e) => setSupportMsg(e.target.value)} />
                 <button onClick={() => { if(!supportMsg) return; push(ref(db, 'messages/Admin'), { fromName: user.displayName, fromId: user.uid, text: supportMsg, date: new Date().toISOString() }); setSupportMsg(''); showToast("✅ تم الإرسال"); }} className="w-full bg-zinc-950 text-white py-5 rounded-[2rem] font-black shadow-xl">إرسال للمدير</button>
             </div>
         )}
@@ -307,8 +305,8 @@ export default function Dashboard({ user }) {
         {/* الملف الشخصي المكتمل */}
         {activeTab === 'profile' && (
             <div className="max-w-xl mx-auto text-center space-y-6">
-                <div className="bg-white p-10 rounded-[3rem] border shadow-sm relative overflow-hidden">
-                    <img src={user.photoURL} className="w-28 h-28 rounded-full mx-auto border-4 border-yellow-400 mb-4 object-cover shadow-lg" />
+                <div className="bg-white p-10 rounded-[3rem] border shadow-sm relative">
+                    <img src={user.photoURL} className="w-24 h-24 rounded-full mx-auto border-4 border-yellow-400 mb-4 object-cover shadow-lg" />
                     <h2 className="text-2xl font-black">{user.displayName}</h2>
                     <p className="text-zinc-400 text-xs mb-6 font-bold">{user.email}</p>
                     <button onClick={() => signOut(auth).then(() => window.location.reload())} className="bg-red-50 text-red-600 px-10 py-3 rounded-2xl text-xs font-black border border-red-100">تسجيل خروج</button>
@@ -323,10 +321,82 @@ export default function Dashboard({ user }) {
         )}
       </main>
 
-      {/* مودال إدخال العنوان الاحترافي */}
+      {/* مودال إدخال العنوان (المصلح والمشيك) */}
       {addressModal.show && (
-        <div className="fixed inset-0 bg-black/90 z-[200] flex items-center justify-center p-4 backdrop-blur-md animate-fadeIn">
-            <div className="bg-zinc-900 w-full max-w-sm p-8 rounded-[2.5rem] border border-zinc-800 animate-slideUp text-right">
+        <div className="fixed inset-0 bg-black/90 z-[200] flex items-center justify-center p-4 backdrop-blur-md">
+            <div className="bg-zinc-900 w-full max-w-sm p-8 rounded-[2.5rem] border border-zinc-800 text-right animate-slideUp">
                 <h2 className="text-yellow-400 font-black text-lg mb-4 italic">توصيل للبيت 🚚</h2>
-                <p className="text-zinc-400 text-[10px] mb-6">حدد مكانك بالتفصيل (المنطقة/الشارع/الدور) عشان البائع يحدد سعر التوصيل:</p>
-                <input autoFocus className="w-full bg-zinc-800 p-4 rounded-2xl text-white outline-none border border
+                <input className="w-full bg-zinc-800 p-4 rounded-2xl text-white outline-none border border-zinc-700 mb-6 font-bold" placeholder="عنوانك بالتفصيل..." value={addressModal.location} onChange={(e) => setAddressModal({...addressModal, location: e.target.value})} />
+                <div className="flex gap-2">
+                    <button onClick={() => {
+                        if(!addressModal.location.trim()) return showToast("⚠️ ادخل العنوان");
+                        push(ref(db, 'orders'), { productId: addressModal.product.id, productName: addressModal.product.name, buyerId: user.uid, buyerName: user.displayName, sellerId: addressModal.product.sellerId, sellerName: addressModal.product.sellerName, buyerLocation: addressModal.location, status: 'pending', deliveryFee: 0, date: new Date().toISOString() });
+                        setAddressModal({ show: false, product: null, location: '' }); showToast("✅ تم الطلب"); setActiveTab('cart');
+                    }} className="flex-1 bg-yellow-400 text-black py-4 rounded-2xl font-black text-xs">تأكيد الطلب ✅</button>
+                    <button onClick={() => setAddressModal({ show: false, product: null, location: '' })} className="px-6 bg-zinc-800 text-zinc-500 py-4 rounded-2xl font-black text-xs">إلغاء</button>
+                </div>
+            </div>
+        </div>
+      )}
+
+      {/* زر إضافة منشور العائم */}
+      {activeTab === 'home' && (
+        <button onClick={() => setShowModal(true)} className="fixed bottom-10 left-10 w-20 h-20 bg-yellow-400 text-black rounded-full shadow-2xl text-4xl font-black z-50 border-4 border-white flex items-center justify-center animate-bounce shadow-yellow-400/30">+</button>
+      )}
+
+      {/* مودال النشر */}
+      {showModal && (
+        <div className="fixed inset-0 bg-black/80 z-[120] flex items-center justify-center p-4 backdrop-blur-sm">
+          <div className="bg-white w-full max-w-lg p-8 rounded-[3rem] shadow-2xl overflow-y-auto max-h-[90vh] animate-slideUp">
+            <button onClick={() => setShowModal(false)} className="absolute top-8 left-8 text-3xl text-zinc-300">&times;</button>
+            <h2 className="text-xl font-black mb-8 text-center italic border-b pb-4">نشر في الورشة 🚀</h2>
+            <form className="space-y-4" onSubmit={(e) => {
+                e.preventDefault();
+                setUploading(true);
+                push(ref(db, 'products'), { ...newProduct, sellerId: user.uid, sellerName: user.displayName, status: 'available', date: new Date().toISOString() })
+                .then(() => { setUploading(false); setShowModal(false); showToast("✅ تم النشر"); });
+            }}>
+              <input type="file" className="w-full bg-zinc-100 p-2 rounded-xl" onChange={(e) => {const r = new FileReader(); r.onloadend = () => setNewProduct({...newProduct, image: r.result}); r.readAsDataURL(e.target.files[0]);}} />
+              <input placeholder="اسم المنتج" className="w-full bg-zinc-100 p-4 rounded-xl outline-none font-bold" onChange={e => setNewProduct({...newProduct, name: e.target.value})} />
+              <select className="w-full bg-zinc-100 p-4 rounded-xl font-bold" onChange={e => setNewProduct({...newProduct, category: e.target.value})}>
+                  {categories.map(cat => <option key={cat.id} value={cat.name}>{cat.name}</option>)}
+              </select>
+              <input placeholder="السعر" className="w-full bg-zinc-100 p-4 rounded-xl outline-none font-bold" onChange={e => setNewProduct({...newProduct, price: e.target.value})} />
+              <input placeholder="رقم الموبايل" className="w-full bg-zinc-100 p-4 rounded-xl outline-none font-bold" onChange={e => setNewProduct({...newProduct, phone: e.target.value})} />
+              <button type="submit" disabled={uploading} className="w-full bg-yellow-400 py-4 rounded-2xl font-black shadow-lg">نشر الآن ✅</button>
+            </form>
+          </div>
+        </div>
+      )}
+
+      {/* مودال الدردشة الشامل (صوت + صور) */}
+      {messageModal.show && (
+        <div className="fixed inset-0 bg-black/95 z-[150] flex flex-col md:p-6 backdrop-blur-md">
+            <div className="p-6 border-b flex justify-between items-center bg-zinc-50 md:rounded-t-[3rem]">
+               <h3 className="font-black text-lg">{messageModal.receiverName}</h3>
+               <button onClick={() => setMessageModal({ show: false, receiverId: '', receiverName: '' })} className="text-4xl text-zinc-300 hover:text-black">&times;</button>
+            </div>
+            <div className="flex-1 overflow-y-auto p-6 space-y-4 bg-white flex flex-col no-scrollbar">
+               {myMessages.filter(m => m.fromId === messageModal.receiverId || m.toId === messageModal.receiverId).sort((a,b) => new Date(a.date) - new Date(b.date)).map((msg, i) => (
+                 <div key={i} className={`flex ${msg.fromId === user.uid ? 'justify-end' : 'justify-start'}`}>
+                    <div className={`p-4 rounded-[1.5rem] shadow-sm max-w-[85%] ${msg.fromId === user.uid ? 'bg-yellow-400 text-black' : 'bg-zinc-100 text-zinc-800'}`}>
+                       {msg.voice ? <audio src={msg.voice} controls className="h-8 w-44" /> : <p className="text-sm font-bold">{msg.text}</p>}
+                    </div>
+                 </div>
+               ))}
+            </div>
+            <div className="p-5 bg-white border-t flex gap-2 items-center md:rounded-b-[3rem]">
+               <button onMouseDown={startRecording} onMouseUp={stopRecording} onTouchStart={startRecording} onTouchEnd={stopRecording} onMouseMove={handleDrag} onTouchMove={handleDrag} className={`p-5 rounded-[1.5rem] ${isRecording ? (isCancelled ? 'bg-zinc-800 text-red-500 scale-125' : 'bg-red-500 text-white animate-pulse scale-125') : 'bg-zinc-100 text-zinc-400'}`}>{isCancelled ? '🗑️' : (isRecording ? '🛑' : '🎤')}</button>
+               <input className="flex-1 bg-zinc-100 p-5 rounded-[1.5rem] outline-none font-bold text-xs" placeholder={isRecording ? "اسحب يمين للحذف ➡️" : "اكتب رسالة..."} value={msgText} onChange={(e) => setMsgText(e.target.value)} />
+               <button onClick={() => { if(!msgText.trim()) return; const d = { fromName: user.displayName, fromId: user.uid, text: msgText, date: new Date().toISOString() }; push(ref(db, `messages/${messageModal.receiverId}`), d); push(ref(db, `messages/${user.uid}`), { ...d, toId: messageModal.receiverId }); setMsgText(''); }} className="bg-zinc-950 text-white px-7 py-4 rounded-[1.5rem] font-black hover:bg-yellow-400 transition-colors">إرسال</button>
+            </div>
+        </div>
+      )}
+
+      {/* عرض الصور (Full View) */}
+      {viewImage && <div className="fixed inset-0 bg-black/98 z-[999] flex items-center justify-center p-4 animate-fadeIn" onClick={() => setViewImage(null)}><img src={viewImage} className="max-w-full max-h-full rounded-2xl shadow-2xl animate-zoomIn" /></div>}
+
+      <footer className="text-center pb-10 pt-4 opacity-40 font-cairo"><p className="text-[10px] text-zinc-400 font-black uppercase tracking-[0.5em] italic">AHMED • EST. 2026</p></footer>
+    </div>
+  );
+}
