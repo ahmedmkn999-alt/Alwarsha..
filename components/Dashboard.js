@@ -3,22 +3,19 @@ import { db, auth } from '../firebaseConfig';
 import { ref, onValue, push, remove, update } from "firebase/database";
 import { signOut } from "firebase/auth";
 
-// --- 1. كارت المنتج (ProductCard) ---
 const ProductCard = ({ item, onViewImage, onChat, onAddToCart, isOwner, onDelete }) => {
-  if (!item) return null;
   const isSold = item.status === 'sold';
-
   return (
     <div className={`bg-white rounded-[2rem] border border-zinc-100 overflow-hidden shadow-sm hover:shadow-xl transition-all group relative ${isSold ? 'opacity-60 grayscale' : ''}`}>
       <div className="h-64 overflow-hidden relative bg-zinc-50">
         <img 
-          src={item.image || 'https://via.placeholder.com/300'} 
+          src={item.image} 
           className="w-full h-full object-cover cursor-pointer group-hover:scale-105 transition-transform duration-700" 
           onClick={() => onViewImage(item.image)} 
-          alt={item.name || 'Product'}
+          alt={item.name}
         />
         <div className="absolute top-4 right-4 bg-yellow-400 text-black px-4 py-1 rounded-full font-black text-[10px] shadow-lg z-10">
-          {item.category || 'عام'}
+          {item.category}
         </div>
         {isSold && (
           <div className="absolute inset-0 bg-black/50 flex items-center justify-center z-20 backdrop-blur-[2px]">
@@ -30,11 +27,11 @@ const ProductCard = ({ item, onViewImage, onChat, onAddToCart, isOwner, onDelete
         )}
       </div>
       <div className="p-6 text-right">
-        <h3 className="font-black text-zinc-900 text-base mb-1 line-clamp-1">{item.name || 'بدون اسم'}</h3>
+        <h3 className="font-black text-zinc-900 text-base mb-1 line-clamp-1">{item.name}</h3>
         <p className="text-[10px] text-zinc-400 font-bold mb-4">الحالة: {item.condition === 'new' ? 'جديد ✨' : 'مستعمل 🛠️'}</p>
         
         <div className="flex items-center justify-between mb-4 bg-zinc-50 p-3 rounded-2xl">
-            <span className="font-black text-yellow-600 text-xl">{item.price || '0'} ج.م</span>
+            <span className="font-black text-yellow-600 text-xl">{item.price} ج.م</span>
             <span className="text-[10px] text-zinc-400">السعر نهائي</span>
         </div>
 
@@ -58,27 +55,21 @@ const ProductCard = ({ item, onViewImage, onChat, onAddToCart, isOwner, onDelete
   );
 };
 
-// --- 2. المكون الرئيسي (Dashboard) ---
 export default function Dashboard({ user }) {
-  // States
   const [showSplash, setShowSplash] = useState(true);
   const [activeTab, setActiveTab] = useState('home'); 
   const [searchTerm, setSearchTerm] = useState('');
   const [toast, setToast] = useState({ show: false, msg: '' });
 
-  // Data
   const [products, setProducts] = useState([]);
   const [myMessages, setMyMessages] = useState([]);
   const [orders, setOrders] = useState([]);
   const [supportMsg, setSupportMsg] = useState('');
   
-  // UI
   const [showModal, setShowModal] = useState(false);
   const [addressModal, setAddressModal] = useState({ show: false, product: null, location: '' });
   const [viewImage, setViewImage] = useState(null);
   const [messageModal, setMessageModal] = useState({ show: false, receiverId: '', receiverName: '' });
-  
-  // Inputs
   const [newProduct, setNewProduct] = useState({ name: '', price: '', desc: '', condition: 'new', image: null, phone: '', category: 'قطع غيار' });
   const [deliveryFees, setDeliveryFees] = useState({});
   const [uploading, setUploading] = useState(false);
@@ -99,8 +90,6 @@ export default function Dashboard({ user }) {
 
   useEffect(() => {
     const timer = setTimeout(() => setShowSplash(false), 3500);
-    
-    // جلب البيانات بشكل آمن
     if(user?.uid) {
         onValue(ref(db, 'orders'), (snap) => {
             const data = snap.val();
@@ -111,12 +100,10 @@ export default function Dashboard({ user }) {
             setMyMessages(data ? Object.entries(data).map(([id, val]) => ({ id, ...val })) : []);
         });
     }
-    
     onValue(ref(db, 'products'), (snap) => {
-        const data = snap.val();
-        setProducts(data ? Object.entries(data).map(([id, val]) => ({ id, ...val })).reverse() : []);
+      const data = snap.val();
+      setProducts(data ? Object.entries(data).map(([id, val]) => ({ id, ...val })).reverse() : []);
     });
-
     return () => clearTimeout(timer);
   }, [user]);
 
@@ -126,13 +113,12 @@ export default function Dashboard({ user }) {
   };
 
   const filtered = products.filter(p => {
-    if (!p) return false;
     const normalize = (str) => str?.toLowerCase().replace(/[أإآ]/g, 'ا').replace(/[ة]/g, 'ه').trim() || "";
     const search = normalize(searchTerm);
     return normalize(p.name).includes(search) || normalize(p.category).includes(search);
   });
 
-  const uniqueConversations = myMessages 
+  const uniqueConversations = myMessages.length > 0 
     ? [...new Map(myMessages.filter(m => m && m.fromId !== 'Admin' && m.toId !== 'Admin').map(m => [m.fromId === user.uid ? m.toId : m.fromId, m])).values()]
     : [];
 
@@ -145,31 +131,24 @@ export default function Dashboard({ user }) {
       }
   };
 
-  // شاشة تحميل لو البيانات لسه ما وصلتش (تمنع الكراش)
-  if (!user) return (
-    <div className="min-h-screen flex items-center justify-center bg-zinc-950">
-        <div className="text-yellow-400 font-black text-xl animate-pulse">جاري التحميل...</div>
-    </div>
-  );
+  // ده السطر الوحيد اللي بيمنع الموقع يضرب، لازم يفضل موجود
+  if (!user) return <div className="min-h-screen flex items-center justify-center bg-black text-yellow-400 font-black animate-pulse">جاري التحميل...</div>;
 
   return (
     <div className="min-h-screen bg-[#F8F8F8] pb-24 font-cairo select-none overflow-x-hidden" dir="rtl">
-      {/* Toast Notification */}
       {toast.show && <div className="fixed top-20 left-1/2 -translate-x-1/2 z-[9999] bg-yellow-400 text-black px-8 py-4 rounded-2xl font-black shadow-2xl border-4 border-white animate-bounce">{toast.msg}</div>}
 
-      {/* Splash Screen */}
       {showSplash && (
         <div className="fixed inset-0 bg-zinc-950 z-[999] flex flex-col items-center justify-center">
            <div className="w-28 h-28 bg-yellow-400 rounded-full flex items-center justify-center border-4 border-white animate-bounce shadow-[0_0_50px_rgba(250,204,21,0.5)]"><span className="text-black text-6xl font-black italic">W</span></div>
            <h1 className="text-white font-black text-4xl mt-8 italic tracking-tighter">AL-WARSHA</h1>
            <div className="mt-8 text-center animate-pulse">
               <p className="text-zinc-500 text-sm font-bold tracking-[0.3em] uppercase">Welcome Back</p>
-              <p className="text-yellow-400 text-xl font-black mt-2">{user?.displayName || 'User'}</p>
+              <p className="text-yellow-400 text-xl font-black mt-2">{user?.displayName}</p>
            </div>
         </div>
       )}
 
-      {/* Header */}
       <header className="bg-white/80 backdrop-blur-md shadow-sm sticky top-0 z-50 border-b border-zinc-100 p-4">
         <div className="container mx-auto flex justify-between items-center">
           <div className="flex items-center gap-2 cursor-pointer group" onClick={() => setActiveTab('home')}>
@@ -182,13 +161,12 @@ export default function Dashboard({ user }) {
              <button onClick={() => setActiveTab('inbox')} className={`p-3 rounded-2xl relative transition-all ${activeTab === 'inbox' ? 'bg-yellow-400 text-black shadow-lg shadow-yellow-400/30' : 'bg-zinc-100 text-zinc-400'}`}>
                 📩 {uniqueConversations.length > 0 && <span className="absolute -top-1 -right-1 bg-red-500 text-white text-[9px] w-4 h-4 rounded-full flex items-center justify-center border-2 border-white animate-pulse">!</span>}
              </button>
-             <button onClick={() => setActiveTab('profile')} className="w-11 h-11 rounded-2xl border-2 border-white shadow-md overflow-hidden active:scale-90 transition-transform"><img src={user.photoURL || 'https://via.placeholder.com/150'} className="w-full h-full object-cover" alt="Profile" /></button>
+             <button onClick={() => setActiveTab('profile')} className="w-11 h-11 rounded-2xl border-2 border-white shadow-md overflow-hidden active:scale-90 transition-transform"><img src={user.photoURL} className="w-full h-full object-cover" /></button>
           </div>
         </div>
       </header>
 
       <main className="container mx-auto p-4 md:p-8">
-        {/* الصفحة الرئيسية */}
         {activeTab === 'home' && (
           <>
             <div className="relative mb-8">
@@ -200,7 +178,7 @@ export default function Dashboard({ user }) {
                 <button onClick={() => setSelectedCategory('all')} className={`flex-shrink-0 w-24 h-32 rounded-[2rem] flex flex-col items-center justify-center border-2 transition-all ${selectedCategory === 'all' ? 'border-yellow-400 bg-yellow-400 shadow-lg shadow-yellow-400/30 scale-105' : 'border-white bg-white shadow-sm opacity-60'}`}><span className="text-3xl mb-2">🌍</span><span className="text-[10px] font-black">الكل</span></button>
                 {categories.map(cat => (
                     <div key={cat.id} onClick={() => setSelectedCategory(cat.name)} className={`flex-shrink-0 w-24 h-32 rounded-[2rem] relative overflow-hidden cursor-pointer border-4 transition-all shadow-md ${selectedCategory === cat.name ? 'border-yellow-400 scale-105' : 'border-white opacity-80'}`}>
-                        <img src={cat.img} className="w-full h-full object-cover" alt={cat.name} />
+                        <img src={cat.img} className="w-full h-full object-cover" />
                         <div className="absolute inset-0 bg-gradient-to-t from-black/80 to-transparent flex items-end justify-center p-3 text-center"><span className="text-white text-[10px] font-black">{cat.name}</span></div>
                     </div>
                 ))}
@@ -214,7 +192,6 @@ export default function Dashboard({ user }) {
           </>
         )}
 
-        {/* البريد (Inbox) */}
         {activeTab === 'inbox' && (
             <div className="max-w-2xl mx-auto space-y-4 animate-fadeIn">
                 <h2 className="text-3xl font-black mb-8 text-right px-4">الرسائل <span className="text-yellow-400">.</span></h2>
@@ -222,10 +199,10 @@ export default function Dashboard({ user }) {
                   uniqueConversations.map(chat => (
                     <div key={chat.id} className="flex gap-3 items-center group">
                         <div onClick={() => setMessageModal({ show: true, receiverId: chat.fromId === user.uid ? chat.toId : chat.fromId, receiverName: chat.fromName })} className="flex-1 bg-white p-5 rounded-[2.5rem] flex items-center gap-5 cursor-pointer hover:shadow-xl transition-all border border-transparent hover:border-yellow-400">
-                            <div className="w-16 h-16 rounded-full bg-zinc-100 text-zinc-900 flex items-center justify-center font-black text-2xl shadow-inner">{chat.fromName ? chat.fromName[0] : '?'}</div>
+                            <div className="w-16 h-16 rounded-full bg-zinc-100 text-zinc-900 flex items-center justify-center font-black text-2xl shadow-inner">{chat.fromName?.[0] || '?'}</div>
                             <div className="flex-1 text-right">
                                 <h4 className="font-black text-zinc-900 text-lg">{chat.fromName}</h4>
-                                <p className="text-xs text-zinc-400 font-bold mt-1 line-clamp-1">{chat.text || "رسالة"}</p>
+                                <p className="text-xs text-zinc-400 font-bold mt-1 line-clamp-1">{chat.text || "رسالة صوتية/صورة"}</p>
                             </div>
                             <span className="text-2xl text-zinc-200 group-hover:text-yellow-400 transition-colors">💬</span>
                         </div>
@@ -235,12 +212,10 @@ export default function Dashboard({ user }) {
             </div>
         )}
 
-        {/* العربة (Cart) */}
         {activeTab === 'cart' && (
             <div className="max-w-2xl mx-auto space-y-10 animate-fadeIn">
                 <h2 className="text-3xl font-black text-right px-4">متابعة الطلبات <span className="text-yellow-400">.</span></h2>
                 
-                {/* قسم البائع */}
                 <div className="space-y-4">
                     <h3 className="font-black text-zinc-400 text-xs px-4 uppercase tracking-widest">طلبات واردة (ناس عايزة تشتري مني)</h3>
                     {orders.filter(o => o.sellerId === user.uid).length === 0 && <p className="text-center text-zinc-300 text-xs font-bold py-4">مفيش طلبات جديدة</p>}
@@ -276,7 +251,6 @@ export default function Dashboard({ user }) {
                     ))}
                 </div>
 
-                {/* قسم المشتري */}
                 <div className="space-y-4">
                     <h3 className="font-black text-zinc-400 text-xs px-4 uppercase tracking-widest">مشترياتي</h3>
                     {orders.filter(o => o.buyerId === user.uid).reverse().map(order => (
@@ -301,7 +275,6 @@ export default function Dashboard({ user }) {
             </div>
         )}
 
-        {/* Support */}
         {activeTab === 'support' && (
             <div className="max-w-md mx-auto text-center space-y-6 pt-10">
                 <div className="w-20 h-20 bg-zinc-100 rounded-full mx-auto flex items-center justify-center text-4xl shadow-inner">🎧</div>
@@ -313,12 +286,11 @@ export default function Dashboard({ user }) {
             </div>
         )}
 
-        {/* Profile */}
         {activeTab === 'profile' && (
             <div className="max-w-xl mx-auto pt-10">
                 <div className="bg-white p-10 rounded-[3rem] shadow-xl text-center relative overflow-hidden mb-10">
                     <div className="absolute top-0 left-0 w-full h-32 bg-zinc-900"></div>
-                    <img src={user.photoURL || 'https://via.placeholder.com/150'} className="w-32 h-32 rounded-[2rem] mx-auto border-8 border-white shadow-2xl relative z-10 object-cover" />
+                    <img src={user.photoURL} className="w-32 h-32 rounded-[2rem] mx-auto border-8 border-white shadow-2xl relative z-10 object-cover" />
                     <h2 className="text-3xl font-black mt-6 text-zinc-900">{user.displayName}</h2>
                     <p className="text-zinc-400 text-sm font-bold mt-1">{user.email}</p>
                     <button onClick={() => signOut(auth).then(() => window.location.reload())} className="mt-8 bg-red-50 text-red-500 px-10 py-3 rounded-2xl font-black text-xs hover:bg-red-500 hover:text-white transition-all">تسجيل خروج</button>
@@ -327,11 +299,12 @@ export default function Dashboard({ user }) {
         )}
       </main>
 
-      {/* Address Modal (Fixed) */}
+      {/* Address Modal (Fixed Style) */}
       {addressModal.show && (
-        <div className="fixed inset-0 bg-black/60 z-[200] flex items-center justify-center p-4 backdrop-blur-sm">
+        <div className="fixed inset-0 bg-black/60 z-[200] flex items-end md:items-center justify-center p-4 backdrop-blur-sm">
             <div className="bg-white w-full max-w-md p-8 rounded-[3rem] shadow-2xl animate-slideUp">
                 <h2 className="text-2xl font-black text-center mb-2">عنوان التوصيل 🚚</h2>
+                <p className="text-center text-zinc-400 text-xs font-bold mb-8">عشان المندوب يقدر يوصلك، محتاجين العنوان بالتفصيل</p>
                 <div className="bg-zinc-50 p-2 rounded-3xl border border-zinc-200 mb-4">
                     <input autoFocus className="w-full bg-transparent p-4 outline-none font-bold text-zinc-900 text-center" placeholder="المنطقة - اسم الشارع - رقم العمارة" value={addressModal.location} onChange={(e) => setAddressModal({...addressModal, location: e.target.value})} />
                 </div>
@@ -347,12 +320,13 @@ export default function Dashboard({ user }) {
         </div>
       )}
 
-      {/* Post Modal (Fixed) */}
+      {/* Post Modal (FANCY - Dotted) */}
       {showModal && (
         <div className="fixed inset-0 bg-zinc-900/90 z-[120] flex items-center justify-center p-4 backdrop-blur-md">
           <div className="bg-white w-full max-w-lg p-8 rounded-[3rem] shadow-2xl overflow-y-auto max-h-[90vh] animate-slideUp relative">
             <button onClick={() => setShowModal(false)} className="absolute top-8 left-8 w-10 h-10 bg-zinc-100 rounded-full flex items-center justify-center text-zinc-400 font-black hover:bg-red-50 hover:text-red-500 transition-colors">✕</button>
             <h2 className="text-2xl font-black text-center mb-8 mt-2">بيع جهازك 🚀</h2>
+            
             <form className="space-y-5" onSubmit={(e) => {
                 e.preventDefault();
                 setUploading(true);
@@ -368,24 +342,31 @@ export default function Dashboard({ user }) {
                     </div>
                  )}
               </div>
+
               <div className="space-y-3">
-                  <input placeholder="اسم الجهاز" className="w-full bg-zinc-100 p-5 rounded-[1.5rem] outline-none font-bold text-zinc-900" onChange={e => setNewProduct({...newProduct, name: e.target.value})} />
-                  <select className="w-full bg-zinc-100 p-5 rounded-[1.5rem] font-bold text-zinc-500 outline-none" onChange={e => setNewProduct({...newProduct, category: e.target.value})}>
+                  <input placeholder="اسم الجهاز (مثال: تكييف شارب 1.5 حصان)" className="w-full bg-zinc-100 p-5 rounded-[1.5rem] outline-none font-bold text-zinc-900 focus:bg-white focus:ring-2 focus:ring-yellow-400 transition-all" onChange={e => setNewProduct({...newProduct, name: e.target.value})} />
+                  <select className="w-full bg-zinc-100 p-5 rounded-[1.5rem] font-bold text-zinc-500 outline-none appearance-none" onChange={e => setNewProduct({...newProduct, category: e.target.value})}>
                       {categories.map(cat => <option key={cat.id} value={cat.name}>{cat.name}</option>)}
                   </select>
                   <div className="flex gap-3">
-                    <input type="number" placeholder="السعر" className="flex-1 bg-zinc-100 p-5 rounded-[1.5rem] outline-none font-bold text-zinc-900" onChange={e => setNewProduct({...newProduct, price: e.target.value})} />
+                    <input type="number" placeholder="السعر (جنية)" className="flex-1 bg-zinc-100 p-5 rounded-[1.5rem] outline-none font-bold text-zinc-900" onChange={e => setNewProduct({...newProduct, price: e.target.value})} />
                     <select className="bg-zinc-100 p-5 rounded-[1.5rem] font-bold text-zinc-500 outline-none" onChange={e => setNewProduct({...newProduct, condition: e.target.value})}>
                         <option value="new">✨ جديد</option>
                         <option value="used">🛠️ مستعمل</option>
                     </select>
                   </div>
-                  <input type="tel" placeholder="رقم الموبايل" className="w-full bg-zinc-100 p-5 rounded-[1.5rem] outline-none font-bold text-zinc-900" onChange={e => setNewProduct({...newProduct, phone: e.target.value})} />
+                  <input type="tel" placeholder="رقم الموبايل للتواصل" className="w-full bg-zinc-100 p-5 rounded-[1.5rem] outline-none font-bold text-zinc-900" onChange={e => setNewProduct({...newProduct, phone: e.target.value})} />
               </div>
-              <button type="submit" disabled={uploading} className="w-full bg-zinc-900 text-white py-5 rounded-[2rem] font-black text-lg shadow-xl hover:bg-yellow-400 hover:text-black transition-all">{uploading ? 'جاري الرفع...' : 'نشر الإعلان الآن ✅'}</button>
+
+              <button type="submit" disabled={uploading} className="w-full bg-zinc-900 text-white py-5 rounded-[2rem] font-black text-lg shadow-xl hover:bg-yellow-400 hover:text-black transition-all transform active:scale-95">{uploading ? 'جاري الرفع...' : 'نشر الإعلان الآن ✅'}</button>
             </form>
           </div>
         </div>
+      )}
+
+      {/* Floating Button */}
+      {activeTab === 'home' && (
+        <button onClick={() => setShowModal(true)} className="fixed bottom-8 left-8 w-16 h-16 bg-zinc-900 text-yellow-400 rounded-[2rem] shadow-2xl text-3xl font-black z-40 flex items-center justify-center hover:scale-110 active:scale-90 transition-all border-4 border-white">+</button>
       )}
 
       {/* Chat Modal */}
@@ -399,8 +380,9 @@ export default function Dashboard({ user }) {
                    </div>
                    <button onClick={() => setMessageModal({ show: false, receiverId: '', receiverName: '' })} className="w-10 h-10 bg-white rounded-full flex items-center justify-center text-zinc-400 hover:text-red-500 shadow-sm transition-colors">✕</button>
                 </div>
+                
                 <div className="flex-1 overflow-y-auto p-4 space-y-3 bg-white">
-                   {(myMessages || []).filter(m => m.fromId === messageModal.receiverId || m.toId === messageModal.receiverId).sort((a,b) => (new Date(a.date || 0)) - (new Date(b.date || 0))).map((msg, i) => (
+                   {myMessages.filter(m => m.fromId === messageModal.receiverId || m.toId === messageModal.receiverId).sort((a,b) => (new Date(a.date || Date.now())) - (new Date(b.date || Date.now()))).map((msg, i) => (
                      <div key={i} className={`flex ${msg.fromId === user.uid ? 'justify-end' : 'justify-start'}`}>
                         <div className={`p-4 rounded-2xl max-w-[80%] text-sm font-bold ${msg.fromId === user.uid ? 'bg-zinc-900 text-white rounded-br-none' : 'bg-zinc-100 text-zinc-800 rounded-bl-none'}`}>
                            {msg.text}
@@ -409,6 +391,7 @@ export default function Dashboard({ user }) {
                      </div>
                    ))}
                 </div>
+
                 <div className="p-4 bg-white border-t border-zinc-100">
                    <div className="flex gap-2 bg-zinc-50 p-2 rounded-[2rem] border border-zinc-100">
                        <input className="flex-1 bg-transparent px-4 outline-none font-bold text-sm text-zinc-900" placeholder="اكتب رسالة..." value={msgText} onChange={(e) => setMsgText(e.target.value)} />
