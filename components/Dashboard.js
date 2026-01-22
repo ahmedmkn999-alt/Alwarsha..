@@ -14,7 +14,7 @@ export default function Dashboard({ user }) {
   const [showBannedChat, setShowBannedChat] = useState(false);
   
   // ✅ حالة الإشعار الجديد (Toast)
-  const [notification, setNotification] = useState({ show: false, msg: '' });
+  const [toast, setToast] = useState({ show: false, msg: '' });
 
   // --- 2. البيانات ---
   const [products, setProducts] = useState([]);
@@ -30,7 +30,7 @@ export default function Dashboard({ user }) {
   // --- 4. المودالات ---
   const [showModal, setShowModal] = useState(false);
   const [newProduct, setNewProduct] = useState({ 
-    name: '', price: '', desc: '', condition: 'new', image: null, phone: '', category: 'تكييفات' 
+    name: '', price: '', desc: '', condition: 'new', image: null, phone: '', category: 'قطع غيار' 
   });
   const [uploading, setUploading] = useState(false);
   const [viewImage, setViewImage] = useState(null);
@@ -46,7 +46,7 @@ export default function Dashboard({ user }) {
 
   const categories = [
     { id: 'parts', name: 'قطع غيار', img: '/parts.jpg' },
-    { id: 'heater', name: 'سخانات', img: '/heater (1).jpg' },
+    { id: 'heater', name: 'سخانات', img: '/heater.jpg' },
     { id: 'ac', name: 'تكييفات', img: '/ac.jpg.webp' },
     { id: 'wash', name: 'غسالات', img: '/washing.jpg' },
     { id: 'fridge', name: 'ثلاجات', img: '/fridge.jpg' },
@@ -95,10 +95,10 @@ export default function Dashboard({ user }) {
     return () => clearTimeout(timer);
   }, [user]);
 
-  // ✅ دالة إظهار الإشعار الشيك
+  // ✅ دالة الإشعار الشيك
   const showToast = (message) => {
-    setNotification({ show: true, msg: message });
-    setTimeout(() => setNotification({ show: false, msg: '' }), 3000); // يختفي بعد 3 ثواني
+    setToast({ show: true, msg: message });
+    setTimeout(() => setToast({ show: false, msg: '' }), 3000);
   };
 
   // --- 7. الوظائف ---
@@ -112,7 +112,7 @@ export default function Dashboard({ user }) {
           reportedUserId: optionsModal.targetId, reportedUserName: optionsModal.targetName,
           date: new Date().toISOString(), reason: "بلاغ من الشات"
         });
-        showToast("تم إرسال البلاغ للإدارة 🚨"); 
+        showToast("✅ تم إرسال البلاغ للإدارة"); 
     }
     setOptionsModal({ ...optionsModal, show: false });
   };
@@ -126,7 +126,7 @@ export default function Dashboard({ user }) {
   const deleteConversation = (otherId) => {
     if(!window.confirm("مسح المحادثة؟")) return;
     myMessages.forEach(msg => { if (msg.fromId === otherId || msg.toId === otherId) remove(ref(db, `messages/${user.uid}/${msg.id}`)); });
-    showToast("تم حذف المحادثة 🗑️");
+    showToast("🗑️ تم حذف المحادثة");
   };
 
   const sendMsgToSeller = () => {
@@ -156,21 +156,21 @@ export default function Dashboard({ user }) {
           };
         } setIsCancelled(false);
       }; recorder.start(); setMediaRecorder(recorder); setIsRecording(true);
-    } catch (err) { showToast("الميكروفون غير متاح 🎤"); }
+    } catch (err) { showToast("🎤 الميكروفون غير متاح"); }
   };
   const handleDrag = (e) => { if (!isRecording) return; if ((e.touches ? e.touches[0].clientX : e.clientX) - touchStartPos.current > 70) setIsCancelled(true); else setIsCancelled(false); };
   const stopRecording = () => { if (mediaRecorder) { mediaRecorder.stop(); setIsRecording(false); } };
 
   const handlePublish = (e) => {
     e.preventDefault();
-    if (!newProduct.image || !newProduct.name || !newProduct.phone || !newProduct.price) return showToast("⚠️ من فضلك أكمل البيانات");
+    if (!newProduct.image || !newProduct.name || !newProduct.phone || !newProduct.price) return showToast("⚠️ أكمل البيانات");
     setUploading(true);
     push(ref(db, 'products'), { ...newProduct, sellerId: user.uid, sellerName: user.displayName, date: new Date().toISOString() })
     .then(() => { 
         setUploading(false); 
         setShowModal(false); 
-        setNewProduct({ name: '', price: '', desc: '', condition: 'new', image: null, phone: '', category: 'تكييفات' }); 
-        showToast("✅ تم نشر الإعلان بنجاح"); 
+        setNewProduct({ name: '', price: '', desc: '', condition: 'new', image: null, phone: '', category: 'قطع غيار' }); 
+        showToast("✅ تم النشر بنجاح"); 
     });
   };
 
@@ -234,11 +234,11 @@ export default function Dashboard({ user }) {
   return (
     <div className="min-h-screen bg-zinc-50 pb-24 font-cairo select-none" dir="rtl">
       
-      {/* ✅✅✅ الإشعار الجديد الشيك (TOAST) ✅✅✅ */}
-      {notification.show && (
+      {/* ✅✅✅ الإشعار الجديد الشيك (Toast) ✅✅✅ */}
+      {toast.show && (
         <div className="fixed top-20 left-1/2 transform -translate-x-1/2 z-[9999] animate-bounce">
-            <div className="bg-yellow-400 text-black px-8 py-3 rounded-full font-black shadow-[0_10px_20px_rgba(255,215,0,0.3)] flex items-center gap-2 text-sm border-2 border-black">
-                <span>🔔</span> {notification.msg}
+            <div className="bg-yellow-400 text-black px-6 py-3 rounded-full font-black shadow-[0_10px_30px_rgba(255,215,0,0.4)] flex items-center gap-2 text-sm border-2 border-black min-w-[200px] justify-center">
+                {toast.msg}
             </div>
         </div>
       )}
@@ -331,13 +331,20 @@ export default function Dashboard({ user }) {
           </>
         )}
 
-        {/* ... (باقي الصفحات) ... */}
-        
+        {/* ... (باقي التبويبات والمودالات) ... */}
         {activeTab === 'inbox' && (
           <div className="max-w-2xl mx-auto space-y-4">
             <h2 className="text-2xl font-black mb-6 text-right pr-3 border-r-4 border-yellow-400 italic">بريد الورشة 📩</h2>
             {uniqueConversations.length === 0 ? <p className="text-center text-zinc-400 py-10 font-bold">صندوق الوارد فارغ 📭</p> :
-                uniqueConversations.sort((a,b) => new Date(b.date) - new Date(a.date)).map(chat => {
+                uniqueConversations.sort((a,b) => {
+                    const idA = a.fromId === user.uid ? a.toId : a.fromId;
+                    const idB = b.fromId === user.uid ? b.toId : b.fromId;
+                    const isPinnedA = pinnedChats.includes(idA);
+                    const isPinnedB = pinnedChats.includes(idB);
+                    if (isPinnedA && !isPinnedB) return -1;
+                    if (!isPinnedA && isPinnedB) return 1;
+                    return new Date(b.date) - new Date(a.date);
+                }).map(chat => {
                     const otherId = chat.fromId === user.uid ? chat.toId : chat.fromId;
                     const isPinned = pinnedChats.includes(otherId);
                     return (
