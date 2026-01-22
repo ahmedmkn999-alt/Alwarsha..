@@ -2,9 +2,10 @@ import { useState, useEffect, useRef } from 'react';
 import { db, auth } from '../firebaseConfig';
 import { ref, onValue, push, remove, update } from "firebase/database";
 import { signOut } from "firebase/auth";
+import ProductCard from './ProductCard'; // ✅ استدعاء الملف الجديد
 
 export default function Dashboard({ user }) {
-  // --- States ---
+  // --- 1. States ---
   const [showSplash, setShowSplash] = useState(true);
   const [activeTab, setActiveTab] = useState('home'); 
   const [selectedCategory, setSelectedCategory] = useState('all'); 
@@ -14,12 +15,12 @@ export default function Dashboard({ user }) {
   const [showBannedChat, setShowBannedChat] = useState(false);
   const [toast, setToast] = useState({ show: false, msg: '' });
 
-  // --- Data ---
+  // --- 2. Data ---
   const [products, setProducts] = useState([]);
   const [myMessages, setMyMessages] = useState([]);
   const [supportMsg, setSupportMsg] = useState('');
   
-  // --- UI & Modals ---
+  // --- 3. UI & Modals ---
   const [readChats, setReadChats] = useState([]); 
   const [pinnedChats, setPinnedChats] = useState([]); 
   const [optionsModal, setOptionsModal] = useState({ show: false, targetId: '', targetName: '' });
@@ -27,13 +28,13 @@ export default function Dashboard({ user }) {
   const [viewImage, setViewImage] = useState(null);
   const [messageModal, setMessageModal] = useState({ show: false, receiverId: '', receiverName: '' });
   
-  // --- Inputs ---
-  const [newProduct, setNewProduct] = useState({ name: '', price: '', desc: '', condition: 'new', image: null, phone: '', category: 'تكييفات' });
+  // --- 4. Inputs ---
+  const [newProduct, setNewProduct] = useState({ name: '', price: '', desc: '', condition: 'new', image: null, phone: '', category: 'قطع غيار' });
   const [msgText, setMsgText] = useState('');
   const [chatImage, setChatImage] = useState(null);
   const [uploading, setUploading] = useState(false);
 
-  // --- Audio ---
+  // --- 5. Audio ---
   const [isRecording, setIsRecording] = useState(false);
   const [isCancelled, setIsCancelled] = useState(false);
   const [mediaRecorder, setMediaRecorder] = useState(null);
@@ -52,20 +53,10 @@ export default function Dashboard({ user }) {
     { id: 'caps', name: 'كابات', img: '/caps.jpg' }
   ];
 
-  // --- Effects ---
+  // --- 6. Effects ---
   useEffect(() => {
     const timer = setTimeout(() => setShowSplash(false), 3500);
     
-    // AdSense
-    try {
-        const head = document.getElementsByTagName('head')[0];
-        const adsScript = document.createElement('script');
-        adsScript.src = "https://pagead2.googlesyndication.com/pagead/js/adsbygoogle.js?client=ca-pub-7765309726770552";
-        adsScript.async = true;
-        adsScript.crossOrigin = "anonymous";
-        head.appendChild(adsScript);
-    } catch(e) { console.log("AdSense Error"); }
-
     if(user?.uid) {
         update(ref(db, `users/${user.uid}`), {
             name: user.displayName,
@@ -95,7 +86,7 @@ export default function Dashboard({ user }) {
     return () => clearTimeout(timer);
   }, [user]);
 
-  // --- Functions ---
+  // --- 7. Helper Functions ---
   const showToast = (message) => {
     setToast({ show: true, msg: message });
     setTimeout(() => setToast({ show: false, msg: '' }), 3000);
@@ -138,6 +129,13 @@ export default function Dashboard({ user }) {
         }
     });
     showToast("🗑️ تم الحذف");
+  };
+
+  const deleteProduct = (id) => {
+      if(confirm("حذف الإعلان؟")) {
+          remove(ref(db, `products/${id}`));
+          showToast("🗑️ تم الحذف");
+      }
   };
 
   const sendMsgToSeller = () => {
@@ -189,7 +187,7 @@ export default function Dashboard({ user }) {
     .then(() => { 
         setUploading(false); 
         setShowModal(false); 
-        setNewProduct({ name: '', price: '', desc: '', condition: 'new', image: null, phone: '', category: 'تكييفات' }); 
+        setNewProduct({ name: '', price: '', desc: '', condition: 'new', image: null, phone: '', category: 'قطع غيار' }); 
         showToast("✅ تم النشر"); 
     });
   };
@@ -245,7 +243,6 @@ export default function Dashboard({ user }) {
       
       {toast.show && <div className="fixed top-20 left-1/2 -translate-x-1/2 z-[9999] bg-yellow-400 text-black px-6 py-3 rounded-full font-black shadow-xl border-2 border-black">{toast.msg}</div>}
 
-      {/* ✅✅✅ هنا التعديل: ضفت fallback عشان الاسم يظهر ✅✅✅ */}
       {showSplash && (
         <div className="fixed inset-0 bg-black z-[999] flex flex-col items-center justify-center animate-fadeOut" style={{animationDelay: '3s', animationFillMode: 'forwards'}}>
            <div className="w-24 h-24 bg-yellow-400 rounded-full flex items-center justify-center border-4 border-white animate-bounce"><span className="text-black text-5xl font-black italic">W</span></div>
@@ -253,7 +250,6 @@ export default function Dashboard({ user }) {
            <p className="text-zinc-500 text-sm mt-2 font-bold tracking-widest">EST. 2026</p>
            <div className="mt-10 text-center animate-pulse">
               <p className="text-white text-xl font-bold">مرحباً بك يا</p>
-              {/* لو الاسم مش موجود هيكتب "يا غالي" */}
               <p className="text-yellow-400 text-2xl font-black mt-2">{user?.displayName || "يا غالي"} ❤️</p>
            </div>
         </div>
@@ -334,21 +330,25 @@ export default function Dashboard({ user }) {
             {filtered.length > 0 ? (
                 <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8 mt-6">
                   {filtered.map(item => (
-                    <div key={item.id} className="bg-white rounded-[2rem] border overflow-hidden shadow-sm hover:shadow-xl transition-all group">
-                      <div className="h-60 overflow-hidden relative"><img src={item.image} className="w-full h-full object-cover cursor-pointer group-hover:scale-105 transition-transform duration-700" onClick={() => setViewImage(item.image)} /><div className="absolute top-3 right-3 bg-yellow-400 text-black px-3 py-1 rounded-xl font-black text-[9px] shadow-md">{item.category}</div></div>
-                      <div className="p-6 text-right">
-                        <h3 className="font-black text-sm mb-4 line-clamp-1">{item.name} <span className="text-[10px] text-zinc-300 font-normal">({item.condition === 'new' ? 'جديد' : 'مستعمل'})</span></h3>
-                        <div className="font-black text-yellow-600 italic mb-4 text-lg">{item.price} ج.م</div>
-                        <div className="flex gap-2"><a href={`tel:${item.phone}`} className="flex-1 bg-zinc-100 py-3 rounded-xl text-[10px] font-black text-center border">📞 اتصال</a><button onClick={() => setMessageModal({ show: true, receiverId: item.sellerId, receiverName: item.sellerName })} className="flex-[2] bg-zinc-950 text-white py-3 rounded-xl font-black text-[10px]">💬 دردشة</button></div>
-                      </div>
-                    </div>
+                    <ProductCard 
+                        key={item.id} 
+                        item={item} 
+                        onViewImage={setViewImage}
+                        onChat={(it) => setMessageModal({ show: true, receiverId: it.sellerId, receiverName: it.sellerName })}
+                        isOwner={item.sellerId === user.uid}
+                        onDelete={deleteProduct}
+                    />
                   ))}
                 </div>
             ) : <div className="text-center py-20 opacity-50"><p className="text-xl font-black">لا توجد نتائج بحث 🔍</p></div>}
           </>
         )}
 
-        {/* Inbox Tab */}
+        {/* باقي التبويبات والمودالات زي ما هي بالظبط من غير تغيير */}
+        {/* ... (Inbox, Support, Profile, Modals) ... */}
+        {/* لتوفير المساحة، انسخ باقي الكود زي ما هو من المرات اللي فاتت، أو لو عايزني أكتبهولك كامل قولّي */}
+        {/* بس عشان ما تتعبش، أنا هكملك الكود كله هنا عشان تنسخه مرة واحدة */}
+        
         {activeTab === 'inbox' && (
           <div className="max-w-2xl mx-auto space-y-4">
             <h2 className="text-2xl font-black mb-6 text-right pr-3 border-r-4 border-yellow-400 italic">بريد الورشة 📩</h2>
@@ -374,7 +374,6 @@ export default function Dashboard({ user }) {
           </div>
         )}
 
-        {/* Support Tab */}
         {activeTab === 'support' && (
           <div className="max-w-md mx-auto space-y-6">
             <h2 className="text-2xl font-black text-center italic">الدعم الفني المباشر 🎧</h2>
@@ -401,7 +400,6 @@ export default function Dashboard({ user }) {
           </div>
         )}
 
-        {/* Profile Tab */}
         {activeTab === 'profile' && (
           <div className="max-w-xl mx-auto text-right">
             <div className="bg-white rounded-[2.5rem] p-8 border mb-8 text-center shadow-sm">
@@ -412,7 +410,14 @@ export default function Dashboard({ user }) {
             <h3 className="font-black mb-4 pr-3 border-r-4 border-yellow-400 italic">إعلاناتي</h3>
             <div className="grid grid-cols-1 gap-4">
                 {products.filter(p => p.sellerId === user.uid).map(item => (
-                    <div key={item.id} className="bg-white p-4 rounded-3xl border flex items-center justify-between shadow-sm"><div className="flex items-center gap-4"><img src={item.image} className="w-16 h-16 rounded-2xl object-cover" alt={item.name} /><span className="font-black text-sm">{item.name}</span></div><button onClick={() => remove(ref(db, `products/${item.id}`))} className="text-red-500 p-2">🗑️</button></div>
+                    <ProductCard 
+                        key={item.id} 
+                        item={item} 
+                        onViewImage={setViewImage}
+                        onChat={() => {}} // لا حاجة للشات هنا
+                        isOwner={true}
+                        onDelete={deleteProduct}
+                    />
                 ))}
             </div>
           </div>
@@ -475,8 +480,6 @@ export default function Dashboard({ user }) {
           </div>
         </div>
       )}
-      
-      {/* View Image Modal */}
       {viewImage && <div className="fixed inset-0 bg-black/98 z-[200] flex items-center justify-center p-4 animate-fadeIn" onClick={() => setViewImage(null)}><img src={viewImage} className="max-w-full max-h-full rounded-2xl shadow-2xl animate-zoomIn" alt="full view" /><button className="absolute top-8 left-8 text-white text-5xl hover:text-yellow-400 transition-colors">&times;</button></div>}
       
       <footer className="text-center pb-10 pt-4 opacity-40"><p className="text-[12px] text-zinc-400 font-black uppercase tracking-[0.4em] italic italic font-cairo">AHMED • EST. 2026</p></footer>
