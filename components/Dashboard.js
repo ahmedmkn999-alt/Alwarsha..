@@ -3,7 +3,7 @@ import { db, auth } from '../firebaseConfig';
 import { ref, onValue, push, remove, update } from "firebase/database";
 import { signOut } from "firebase/auth";
 
-// --- 1. كومبوننت الكارت (مدمج هنا عشان ما يضيعش) ---
+// --- 1. كومبوننت الكارت ---
 const ProductCard = ({ item, onViewImage, onChat, isOwner, onDelete }) => {
   return (
     <div className="bg-white rounded-[2rem] border overflow-hidden shadow-sm hover:shadow-xl transition-all group relative">
@@ -75,6 +75,7 @@ export default function Dashboard({ user }) {
   const touchStartPos = useRef(0);
   const longPressTimer = useRef(null);
 
+  // القائمة المحدثة بالقسم الجديد
   const categories = [
     { id: 'parts', name: 'قطع غيار', img: '/parts.jpg' },
     { id: 'heater', name: 'سخانات', img: '/heater.jpg' },
@@ -84,7 +85,8 @@ export default function Dashboard({ user }) {
     { id: 'stove', name: 'بوتجازات', img: '/stove.jpg' },
     { id: 'fan', name: 'مراوح', img: '/fan.jpg' },
     { id: 'blender', name: 'خلاطات', img: '/blender.jpg' },
-    { id: 'caps', name: 'كابات', img: '/caps.jpg' }
+    { id: 'caps', name: 'كابات', img: '/caps.jpg' },
+    { id: 'tools', name: 'عدة تصليح', img: '/tools.jpg' } // القسم الجديد هنا
   ];
 
   // Effects
@@ -444,4 +446,3 @@ export default function Dashboard({ user }) {
     </div>
   );
 }
-// --- نهاية الكود (تأكد من وجود هذا السطر) ---
