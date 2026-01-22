@@ -4,7 +4,7 @@ import { ref, onValue, push, remove, update } from "firebase/database";
 import { signOut } from "firebase/auth";
 
 export default function Dashboard({ user }) {
-  // --- 1. حالات التحكم ---
+  // --- 1. حالات التحكم (State) ---
   const [showSplash, setShowSplash] = useState(true);
   const [activeTab, setActiveTab] = useState('home'); 
   const [selectedCategory, setSelectedCategory] = useState('all'); 
@@ -13,7 +13,7 @@ export default function Dashboard({ user }) {
   const [isBanned, setIsBanned] = useState(false); 
   const [showBannedChat, setShowBannedChat] = useState(false);
   
-  // ✅ حالة الإشعار الجديد (Toast)
+  // ✅ حالة الإشعار (Toast)
   const [toast, setToast] = useState({ show: false, msg: '' });
 
   // --- 2. البيانات ---
@@ -95,7 +95,7 @@ export default function Dashboard({ user }) {
     return () => clearTimeout(timer);
   }, [user]);
 
-  // ✅ دالة الإشعار الشيك
+  // ✅ دالة الإشعار
   const showToast = (message) => {
     setToast({ show: true, msg: message });
     setTimeout(() => setToast({ show: false, msg: '' }), 3000);
@@ -234,7 +234,7 @@ export default function Dashboard({ user }) {
   return (
     <div className="min-h-screen bg-zinc-50 pb-24 font-cairo select-none" dir="rtl">
       
-      {/* ✅✅✅ الإشعار الجديد الشيك (Toast) ✅✅✅ */}
+      {/* Toast Notification */}
       {toast.show && (
         <div className="fixed top-20 left-1/2 transform -translate-x-1/2 z-[9999] animate-bounce">
             <div className="bg-yellow-400 text-black px-6 py-3 rounded-full font-black shadow-[0_10px_30px_rgba(255,215,0,0.4)] flex items-center gap-2 text-sm border-2 border-black min-w-[200px] justify-center">
@@ -331,40 +331,28 @@ export default function Dashboard({ user }) {
           </>
         )}
 
-        {/* ... (باقي التبويبات والمودالات) ... */}
+        {/* باقي التبويبات */}
         {activeTab === 'inbox' && (
           <div className="max-w-2xl mx-auto space-y-4">
             <h2 className="text-2xl font-black mb-6 text-right pr-3 border-r-4 border-yellow-400 italic">بريد الورشة 📩</h2>
             {uniqueConversations.length === 0 ? <p className="text-center text-zinc-400 py-10 font-bold">صندوق الوارد فارغ 📭</p> :
-                uniqueConversations.sort((a,b) => {
-                    const idA = a.fromId === user.uid ? a.toId : a.fromId;
-                    const idB = b.fromId === user.uid ? b.toId : b.fromId;
-                    const isPinnedA = pinnedChats.includes(idA);
-                    const isPinnedB = pinnedChats.includes(idB);
-                    if (isPinnedA && !isPinnedB) return -1;
-                    if (!isPinnedA && isPinnedB) return 1;
-                    return new Date(b.date) - new Date(a.date);
-                }).map(chat => {
-                    const otherId = chat.fromId === user.uid ? chat.toId : chat.fromId;
-                    const isPinned = pinnedChats.includes(otherId);
-                    return (
-                        <div key={chat.id} className="flex gap-2 items-center relative select-none">
-                            <button onClick={() => deleteConversation(otherId)} className="bg-red-50 text-red-500 w-12 h-20 rounded-2xl flex items-center justify-center shadow-sm active:scale-95 transition-all">🗑️</button>
-                            <div 
-                                onContextMenu={(e) => { e.preventDefault(); }}
-                                onTouchStart={() => handleTouchStart(otherId, chat.fromName)} onTouchEnd={handleTouchEnd}
-                                onClick={() => { if (!readChats.includes(otherId)) setReadChats([...readChats, otherId]); setMessageModal({ show: true, receiverId: otherId, receiverName: chat.fromName }); }}
-                                className={`flex-1 bg-white p-6 rounded-[2rem] border flex items-center gap-5 cursor-pointer hover:border-yellow-400 transition-all shadow-sm ${isPinned ? 'border-yellow-400 ring-2 ring-yellow-100 bg-yellow-50' : ''}`}
-                            >
-                                <div className="w-14 h-14 rounded-full bg-zinc-950 text-yellow-400 flex items-center justify-center font-black text-xl relative">{chat.fromName[0]}{isPinned && <span className="absolute -top-1 -left-1 text-sm">📌</span>}</div>
-                                <div className="flex-1 text-right">
-                                    <h4 className="font-black text-zinc-900">{chat.fromName}</h4>
-                                    <p className="text-xs text-zinc-400 line-clamp-1 mt-1">{chat.text || (chat.image ? "📸 صورة" : "🎤 رسالة صوتية")}</p>
-                                </div>
+                uniqueConversations.sort((a,b) => new Date(b.date) - new Date(a.date)).map(chat => (
+                    <div key={chat.id} className="flex gap-2 items-center relative select-none">
+                        <button onClick={() => deleteConversation(chat.fromId === user.uid ? chat.toId : chat.fromId)} className="bg-red-50 text-red-500 w-12 h-20 rounded-2xl flex items-center justify-center shadow-sm active:scale-95 transition-all">🗑️</button>
+                        <div 
+                            onContextMenu={(e) => { e.preventDefault(); }}
+                            onTouchStart={() => handleTouchStart(chat.fromId === user.uid ? chat.toId : chat.fromId, chat.fromName)} onTouchEnd={handleTouchEnd}
+                            onClick={() => { if (!readChats.includes(chat.fromId === user.uid ? chat.toId : chat.fromId)) setReadChats([...readChats, chat.fromId === user.uid ? chat.toId : chat.fromId]); setMessageModal({ show: true, receiverId: chat.fromId === user.uid ? chat.toId : chat.fromId, receiverName: chat.fromName }); }}
+                            className={`flex-1 bg-white p-6 rounded-[2rem] border flex items-center gap-5 cursor-pointer hover:border-yellow-400 transition-all shadow-sm ${pinnedChats.includes(chat.fromId === user.uid ? chat.toId : chat.fromId) ? 'border-yellow-400 ring-2 ring-yellow-100 bg-yellow-50' : ''}`}
+                        >
+                            <div className="w-14 h-14 rounded-full bg-zinc-950 text-yellow-400 flex items-center justify-center font-black text-xl relative">{chat.fromName[0]}</div>
+                            <div className="flex-1 text-right">
+                                <h4 className="font-black text-zinc-900">{chat.fromName}</h4>
+                                <p className="text-xs text-zinc-400 line-clamp-1 mt-1">{chat.text || (chat.image ? "📸 صورة" : "🎤 رسالة صوتية")}</p>
                             </div>
                         </div>
-                    );
-                })
+                    </div>
+                ))
             }
           </div>
         )}
@@ -373,13 +361,11 @@ export default function Dashboard({ user }) {
           <div className="max-w-md mx-auto space-y-6">
             <h2 className="text-2xl font-black text-center italic">الدعم الفني المباشر 🎧</h2>
             <div className="bg-white p-4 rounded-[2.5rem] border shadow-inner h-[300px] overflow-y-auto flex flex-col gap-3 no-scrollbar">
-                {myMessages.filter(m => m.fromId === 'Admin' || m.toId === 'Admin').length > 0 ? (
-                    myMessages.filter(m => m.fromId === 'Admin' || m.toId === 'Admin').sort((a,b) => new Date(a.date) - new Date(b.date)).map((msg, i) => (
-                        <div key={i} className={`p-3 rounded-2xl text-xs font-bold max-w-[80%] ${msg.fromId === user.uid ? 'bg-yellow-400 self-end text-black' : 'bg-zinc-100 self-start text-zinc-800'}`}>
-                            {msg.text || " رسالة"}
-                        </div>
-                    ))
-                ) : <p className="text-center text-zinc-400 my-auto text-xs">لا توجد رسائل سابقة مع الدعم</p>}
+                {myMessages.filter(m => m.fromId === 'Admin' || m.toId === 'Admin').map((msg, i) => (
+                    <div key={i} className={`p-3 rounded-2xl text-xs font-bold max-w-[80%] ${msg.fromId === user.uid ? 'bg-yellow-400 self-end text-black' : 'bg-zinc-100 self-start text-zinc-800'}`}>
+                        {msg.text || " رسالة"}
+                    </div>
+                ))}
             </div>
             <div className="bg-white p-6 rounded-[2.5rem] border text-center shadow-lg">
                 <textarea className="w-full bg-zinc-50 border rounded-2xl p-4 text-sm mb-4 outline-none min-h-[100px] font-bold" placeholder="اكتب مشكلتك هنا..." value={supportMsg} onChange={(e) => setSupportMsg(e.target.value)} />
@@ -416,7 +402,31 @@ export default function Dashboard({ user }) {
         {optionsModal.show && (<div className="fixed inset-0 bg-black/50 z-[200] flex items-center justify-center p-4 backdrop-blur-sm" onClick={() => setOptionsModal({ ...optionsModal, show: false })}><div className="bg-white w-full max-w-sm p-6 rounded-[2rem] shadow-2xl animate-slideUp text-center space-y-4" onClick={(e) => e.stopPropagation()}><h3 className="font-black text-lg mb-4">خيارات ⚙️</h3><button onClick={handlePin} className="w-full bg-yellow-100 text-yellow-700 py-4 rounded-xl font-bold flex items-center justify-center gap-2 hover:bg-yellow-200">{pinnedChats.includes(optionsModal.targetId) ? '❌ إلغاء التثبيت' : '📌 تثبيت'}</button><button onClick={handleReport} className="w-full bg-red-50 text-red-600 py-4 rounded-xl font-bold flex items-center justify-center gap-2 hover:bg-red-100">🚨 إبلاغ</button><button onClick={() => setOptionsModal({ ...optionsModal, show: false })} className="w-full text-zinc-400 text-xs font-bold pt-2">إلغاء</button></div></div>)}
         {!['inbox', 'profile', 'support'].includes(activeTab) && <button onClick={() => setShowModal(true)} className="fixed bottom-10 left-10 w-20 h-20 bg-yellow-400 text-black rounded-full shadow-[0_10px_40px_rgba(255,215,0,0.4)] text-4xl font-black z-[100] border-4 border-white hover:scale-110 active:scale-90 transition-all flex items-center justify-center shadow-lg shadow-yellow-400/20">+</button>}
         
-        {showModal && <div className="fixed inset-0 bg-black/80 z-[120] flex items-center justify-center p-4 backdrop-blur-sm"><div className="bg-white w-full max-w-lg p-8 rounded-[2.5rem] relative overflow-y-auto max-h-[90vh] shadow-2xl animate-slideUp"><button onClick={() => setShowModal(false)} className="absolute top-6 left-6 text-2xl text-zinc-300 hover:text-black">&times;</button><h2 className="text-xl font-black mb-6 text-center italic">إضافة جهاز 🚀</h2><form onSubmit={handlePublish} className="space-y-4 font-bold"><div className="border-2 border-dashed border-zinc-200 rounded-2xl p-4 text-center cursor-pointer relative hover:bg-zinc-50"><input type="file" accept="image/*" onChange={(e) => {const file = e.target.files[0];const reader = new FileReader();reader.onloadend = () => setNewProduct({ ...newProduct, image: reader.result });reader.readAsDataURL(file);}} className="absolute inset-0 w-full h-full opacity-0 cursor-pointer" />{newProduct.image ? <img src={newProduct.image} className="h-40 mx-auto rounded-xl shadow-md object-contain" /> : <p className="text-xs text-zinc-400 py-10 font-black">ارفع صورة 📸</p>}</div><input placeholder="الاسم" className="w-full bg-zinc-100 p-4 rounded-xl outline-none text-sm font-bold" value={newProduct.name} onChange={e => setNewProduct({...newProduct, name: e.target.value})} /><select className="w-full bg-zinc-100 p-4 rounded-xl font-bold text-sm outline-none" value={newProduct.category} onChange={e => setNewProduct({...newProduct, category: e.target.value})}>{categories.map(cat => <option key={cat.id} value={cat.name}>{cat.name}</option>)}</select><div className="flex gap-2"><input placeholder="السعر" className="flex-1 bg-zinc-100 p-4 rounded-xl outline-none font-bold text-sm" value={newProduct.price} onChange={e => setNewProduct({...newProduct, price: e.target.value})} /><select className="bg-zinc-100 p-4 rounded-xl font-bold text-sm outline-none" value={newProduct.condition} onChange={e => setNewProduct({...newProduct, condition: e.target.value})}><option value="new">✨ جديد</option><option value="used">🛠️ مستعمل</option></select></div><input placeholder="الموبايل" className="w-full bg-zinc-100 p-4 rounded-xl outline-none font-bold text-sm" value={newProduct.phone} onChange={e => setNewProduct({...newProduct, phone: e.target.value})} /><button type="submit" disabled={uploading} className="w-full bg-yellow-400 py-4 rounded-2xl font-black shadow-lg">نشر الآن ✅</button></form></div></div>}
+        {/* مودال الإضافة (تم تنسيقه لمنع الأخطاء) */}
+        {showModal && (
+          <div className="fixed inset-0 bg-black/80 z-[120] flex items-center justify-center p-4 backdrop-blur-sm">
+            <div className="bg-white w-full max-w-lg p-8 rounded-[2.5rem] relative overflow-y-auto max-h-[90vh] shadow-2xl animate-slideUp">
+              <button onClick={() => setShowModal(false)} className="absolute top-6 left-6 text-2xl text-zinc-300 hover:text-black">&times;</button>
+              <h2 className="text-xl font-black mb-6 text-center italic">إضافة جهاز 🚀</h2>
+              <form onSubmit={handlePublish} className="space-y-4 font-bold">
+                <div className="border-2 border-dashed border-zinc-200 rounded-2xl p-4 text-center cursor-pointer relative hover:bg-zinc-50">
+                  <input type="file" accept="image/*" onChange={(e) => {const file = e.target.files[0];const reader = new FileReader();reader.onloadend = () => setNewProduct({ ...newProduct, image: reader.result });reader.readAsDataURL(file);}} className="absolute inset-0 w-full h-full opacity-0 cursor-pointer" />
+                  {newProduct.image ? <img src={newProduct.image} className="h-40 mx-auto rounded-xl shadow-md object-contain" /> : <p className="text-xs text-zinc-400 py-10 font-black">ارفع صورة 📸</p>}
+                </div>
+                <input placeholder="الاسم" className="w-full bg-zinc-100 p-4 rounded-xl outline-none text-sm font-bold" value={newProduct.name} onChange={e => setNewProduct({...newProduct, name: e.target.value})} />
+                <select className="w-full bg-zinc-100 p-4 rounded-xl font-bold text-sm outline-none" value={newProduct.category} onChange={e => setNewProduct({...newProduct, category: e.target.value})}>{categories.map(cat => <option key={cat.id} value={cat.name}>{cat.name}</option>)}</select>
+                <div className="flex gap-2">
+                  <input placeholder="السعر" className="flex-1 bg-zinc-100 p-4 rounded-xl outline-none font-bold text-sm" value={newProduct.price} onChange={e => setNewProduct({...newProduct, price: e.target.value})} />
+                  <select className="bg-zinc-100 p-4 rounded-xl font-bold text-sm outline-none" value={newProduct.condition} onChange={e => setNewProduct({...newProduct, condition: e.target.value})}><option value="new">✨ جديد</option><option value="used">🛠️ مستعمل</option></select>
+                </div>
+                <input placeholder="الموبايل" className="w-full bg-zinc-100 p-4 rounded-xl outline-none font-bold text-sm" value={newProduct.phone} onChange={e => setNewProduct({...newProduct, phone: e.target.value})} />
+                <button type="submit" disabled={uploading} className="w-full bg-yellow-400 py-4 rounded-2xl font-black shadow-lg">نشر الآن ✅</button>
+              </form>
+            </div>
+          </div>
+        )}
+
+        {/* مودال الشات */}
         {messageModal.show && (
         <div className="fixed inset-0 bg-black/95 z-[150] flex items-center justify-center p-0 md:p-6 backdrop-blur-md">
           <div className="bg-white w-full max-w-lg h-full md:h-[85vh] md:rounded-[3rem] flex flex-col shadow-2xl relative animate-slideUp">
@@ -445,6 +455,7 @@ export default function Dashboard({ user }) {
           </div>
         </div>
       )}
+      
       {viewImage && <div className="fixed inset-0 bg-black/98 z-[200] flex items-center justify-center p-4 animate-fadeIn" onClick={() => setViewImage(null)}><img src={viewImage} className="max-w-full max-h-full rounded-2xl shadow-2xl animate-zoomIn" alt="full view" /><button className="absolute top-8 left-8 text-white text-5xl hover:text-yellow-400 transition-colors">&times;</button></div>}
       
       <footer className="text-center pb-10 pt-4 opacity-40"><p className="text-[12px] text-zinc-400 font-black uppercase tracking-[0.4em] italic italic font-cairo">AHMED • EST. 2026</p></footer>
