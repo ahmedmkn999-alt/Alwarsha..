@@ -1,6 +1,6 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { db, auth } from '../firebaseConfig';
-import { ref, onValue, push, remove, update } from "firebase/database";
+import { ref, onValue, push, remove, update, set } from "firebase/database"; // ضفت set
 import { signOut } from "firebase/auth";
 
 // --- 1. كارت المنتج ---
@@ -13,7 +13,7 @@ const ProductCard = ({ item, onViewImage, onChat, onAddToCart, isOwner, onDelete
       <div className="h-64 overflow-hidden relative bg-zinc-50">
         <img 
           src={item.image || 'https://via.placeholder.com/300'} 
-          className="w-full h-full object-cover cursor-pointer" 
+          className="w-full h-full object-cover cursor-pointer group-hover:scale-105 transition-transform duration-700" 
           onClick={() => onViewImage(item.image)} 
           alt={item.name || 'Product'}
         />
@@ -22,11 +22,11 @@ const ProductCard = ({ item, onViewImage, onChat, onAddToCart, isOwner, onDelete
         </div>
         {isSold && (
           <div className="absolute inset-0 bg-black/50 flex items-center justify-center z-20 backdrop-blur-[2px]">
-             <div className="bg-red-500 text-white px-8 py-3 rounded-xl font-black text-sm rotate-[-10deg] border-4 border-white">تم البيع 🚫</div>
+             <div className="bg-red-500 text-white px-8 py-3 rounded-xl font-black text-sm rotate-[-10deg] border-4 border-white tracking-widest">تم البيع 🚫</div>
           </div>
         )}
         {isOwner && (
-            <button onClick={() => onDelete(item.id)} className="absolute top-4 left-4 bg-white/90 text-red-600 w-10 h-10 rounded-full flex items-center justify-center shadow-md font-bold z-10">🗑️</button>
+            <button onClick={() => onDelete(item.id)} className="absolute top-4 left-4 bg-white/90 text-red-600 w-10 h-10 rounded-full flex items-center justify-center shadow-md font-bold z-10 hover:scale-110 active:scale-90 transition-all">🗑️</button>
         )}
       </div>
       <div className="p-6 text-right">
@@ -56,10 +56,13 @@ const ProductCard = ({ item, onViewImage, onChat, onAddToCart, isOwner, onDelete
 
 // --- 2. المكون الرئيسي ---
 export default function Dashboard({ user }) {
-  // شلت الـ Splash State عشان نخفف الحمل
+  // ⚠️⚠️⚠️ اكتب ايميلك هنا عشان زرار الحظر يظهرلك ⚠️⚠️⚠️
+  const ADMIN_EMAIL = "admin@gmail.com"; 
+
   const [activeTab, setActiveTab] = useState('home'); 
   const [searchTerm, setSearchTerm] = useState('');
   const [toast, setToast] = useState({ show: false, msg: '' });
+  const [isBanned, setIsBanned] = useState(false); // حالة الحظر
 
   const [products, setProducts] = useState([]);
   const [myMessages, setMyMessages] = useState([]);
@@ -75,6 +78,8 @@ export default function Dashboard({ user }) {
   const [uploading, setUploading] = useState(false);
   const [msgText, setMsgText] = useState('');
 
+  const isAdmin = user?.email === ADMIN_EMAIL;
+
   const categories = [
     { id: 'parts', name: 'قطع غيار', img: '/parts.jpg' },
     { id: 'heater', name: 'سخانات', img: '/heater (1).jpg' },
@@ -89,17 +94,36 @@ export default function Dashboard({ user }) {
   ];
 
   useEffect(() => {
-    // حماية: لو مفيش يوزر، ماتعملش حاجة
     if(!user || !user.uid) return;
 
+    // 1. مراقب الحظر (ده اللي بيجيب الشاشة السوداء)
+    try {
+        onValue(ref(db, `users/${user.uid}/banned`), (snap) => {
+            setIsBanned(snap.val() === true);
+        });
+    } catch(e) { console.error(e); }
+
+    // 2. جلب البيانات
     try {
         onValue(ref(db, 'orders'), (snap) => {
             const data = snap.val();
             setOrders(data ? Object.entries(data).map(([id, val]) => ({ id, ...val })) : []);
         });
-        onValue(ref(db, `messages/${user.uid}`), (snap) => {
+
+        // لو أدمن هات كل الرسايل، لو يوزر هات رسايله بس
+        const messagesPath = isAdmin ? 'messages/Admin' : `messages/${user.uid}`;
+        onValue(ref(db, messagesPath), (snap) => {
             const data = snap.val();
-            setMyMessages(data ? Object.entries(data).map(([id, val]) => ({ id, ...val })) : []);
+            if (data) {
+                if(isAdmin) {
+                    // تجميع رسائل الدعم للأدمن
+                    setMyMessages(Object.values(data));
+                } else {
+                    setMyMessages(Object.entries(data).map(([id, val]) => ({ id, ...val })));
+                }
+            } else {
+                setMyMessages([]);
+            }
         });
     } catch(e) { console.error(e); }
 
@@ -110,7 +134,7 @@ export default function Dashboard({ user }) {
         });
     } catch(e) { console.error(e); }
 
-  }, [user]);
+  }, [user, isAdmin]);
 
   const showToast = (msg) => {
     setToast({ show: true, msg });
@@ -124,23 +148,54 @@ export default function Dashboard({ user }) {
   });
 
   const uniqueConversations = myMessages.length > 0 
-    ? [...new Map(myMessages.filter(m => m && m.fromId !== 'Admin' && m.toId !== 'Admin').map(m => [m.fromId === user.uid ? m.toId : m.fromId, m])).values()]
+    ? [...new Map(myMessages.filter(m => m).map(m => [m.fromId === user.uid ? m.toId : m.fromId, m])).values()]
     : [];
 
-  // دالة وقت بسيطة جداً عشان ما تضربش
   const safeTime = (d) => {
       try { return new Date(d).toLocaleTimeString([], {hour:'2-digit', minute:'2-digit'}); } 
       catch { return ""; }
   };
 
-  // لو اليوزر مش موجود، اظهر زرار تسجيل دخول بسيط (حماية)
+  const handleSendMessage = () => {
+      if(!msgText.trim()) return;
+      const d = { fromName: user.displayName, fromId: user.uid, text: msgText, date: new Date().toISOString() };
+      
+      if(isAdmin) {
+          // الأدمن بيرد على اليوزر
+          push(ref(db, `messages/${messageModal.receiverId}`), { ...d, fromName: 'الدعم الفني 🛡️' });
+      } else {
+          // اليوزر بيبعت
+          push(ref(db, `messages/${messageModal.receiverId}`), d);
+          push(ref(db, `messages/${user.uid}`), { ...d, toId: messageModal.receiverId });
+      }
+      setMsgText('');
+  };
+
+  // وظيفة الحظر (للأدمن فقط)
+  const toggleBanUser = (targetId, currentStatus) => {
+      if(!isAdmin) return;
+      // نكتب في الداتابيز إن اليوزر ده محظور
+      set(ref(db, `users/${targetId}/banned`), !currentStatus).then(() => {
+          showToast(!currentStatus ? "تم حظر المستخدم 🚫" : "تم فك الحظر ✅");
+      });
+  };
+
+  // --- شاشة الحظر (Black Screen) ---
+  if (isBanned) return (
+      <div className="fixed inset-0 bg-black z-[9999] flex flex-col items-center justify-center p-6 text-center animate-fadeIn">
+          <h1 className="text-red-600 text-6xl mb-4">🚫</h1>
+          <h2 className="text-white text-3xl font-black mb-2">تم حظر حسابك</h2>
+          <p className="text-zinc-400 font-bold text-sm mb-8">لقد قمت بمخالفة شروط استخدام "الورشة".</p>
+          <a href="mailto:admin@gmail.com" className="bg-white text-black px-8 py-3 rounded-full font-black hover:bg-yellow-400 transition-colors">تواصل مع الدعم</a>
+      </div>
+  );
+
   if (!user) return <div className="h-screen flex items-center justify-center font-bold">يرجى تسجيل الدخول...</div>;
 
   return (
     <div className="min-h-screen bg-[#F8F8F8] pb-24 font-cairo select-none" dir="rtl">
       {toast.show && <div className="fixed top-10 left-1/2 -translate-x-1/2 z-[9999] bg-yellow-400 text-black px-6 py-3 rounded-full font-bold shadow-xl">{toast.msg}</div>}
 
-      {/* Header */}
       <header className="bg-white shadow-sm sticky top-0 z-50 p-4 border-b">
         <div className="container mx-auto flex justify-between items-center">
           <div className="flex items-center gap-2 cursor-pointer" onClick={() => setActiveTab('home')}>
@@ -164,7 +219,6 @@ export default function Dashboard({ user }) {
             <div className="mb-6">
                 <input className="w-full bg-white p-4 rounded-2xl text-center font-bold shadow-sm outline-none" placeholder="بحث..." onChange={(e) => setSearchTerm(e.target.value)} />
             </div>
-            {/* Categories */}
             <div className="flex gap-3 overflow-x-auto no-scrollbar pb-6">
                 <button onClick={() => {}} className="flex-shrink-0 w-20 h-24 bg-yellow-400 rounded-2xl flex flex-col items-center justify-center border-2 border-yellow-400 shadow-md"><span className="text-2xl">🌍</span><span className="text-[10px] font-black mt-1">الكل</span></button>
                 {categories.map(cat => (
@@ -174,7 +228,6 @@ export default function Dashboard({ user }) {
                     </div>
                 ))}
             </div>
-            {/* Products */}
             <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                 {filtered.map(item => (
                     <ProductCard key={item.id} item={item} onViewImage={setViewImage} onChat={(it) => setMessageModal({ show: true, receiverId: it.sellerId, receiverName: it.sellerName })} onAddToCart={(p) => setAddressModal({ show: true, product: p, location: '' })} isOwner={item.sellerId === user.uid} onDelete={(id) => confirm("حذف؟") && remove(ref(db, `products/${id}`))} />
@@ -185,16 +238,15 @@ export default function Dashboard({ user }) {
 
         {activeTab === 'inbox' && (
             <div className="space-y-4">
-                <h2 className="text-2xl font-black mb-4 px-2">الرسائل</h2>
+                <h2 className="text-2xl font-black mb-4 px-2">{isAdmin ? 'لوحة تحكم الأدمن 🛡️' : 'الرسائل'}</h2>
                 {uniqueConversations.length === 0 && <p className="text-center text-zinc-400 py-10">مفيش رسايل</p>}
-                {uniqueConversations.map(chat => (
-                    <div key={chat.id} className="bg-white p-4 rounded-2xl flex items-center gap-4 shadow-sm border border-zinc-100" onClick={() => setMessageModal({ show: true, receiverId: chat.fromId === user.uid ? chat.toId : chat.fromId, receiverName: chat.fromName })}>
+                {uniqueConversations.map((chat, idx) => (
+                    <div key={idx} className="bg-white p-4 rounded-2xl flex items-center gap-4 shadow-sm border border-zinc-100" onClick={() => setMessageModal({ show: true, receiverId: chat.fromId, receiverName: chat.fromName })}>
                         <div className="w-12 h-12 bg-zinc-100 rounded-full flex items-center justify-center font-bold text-lg">{chat.fromName?.[0]}</div>
                         <div className="flex-1">
-                            <h4 className="font-bold text-sm">{chat.fromName}</h4>
+                            <h4 className="font-bold text-sm">{chat.fromName} {isAdmin && <span className="text-[10px] bg-yellow-100 px-2 rounded-full text-yellow-600">عميل</span>}</h4>
                             <p className="text-xs text-zinc-400 truncate">{chat.text}</p>
                         </div>
-                        <button onClick={(e) => { e.stopPropagation(); if(confirm("مسح؟")) remove(ref(db, `messages/${user.uid}/${chat.id}`)); }} className="text-red-500 text-xs font-bold">مسح</button>
                     </div>
                 ))}
             </div>
@@ -203,10 +255,8 @@ export default function Dashboard({ user }) {
         {activeTab === 'cart' && (
             <div className="space-y-8">
                 <h2 className="text-2xl font-black px-2">الطلبات</h2>
-                
-                {/* Sales */}
                 <div className="space-y-4">
-                    <h3 className="font-bold text-zinc-400 text-xs px-2">طلبات واردة (بيع)</h3>
+                    <h3 className="font-bold text-zinc-400 text-xs px-2">طلبات واردة</h3>
                     {orders.filter(o => o.sellerId === user.uid).reverse().map(order => (
                         <div key={order.id} className="bg-zinc-900 text-white p-5 rounded-3xl shadow-xl space-y-4">
                             <div className="flex justify-between">
@@ -226,20 +276,6 @@ export default function Dashboard({ user }) {
                         </div>
                     ))}
                 </div>
-
-                {/* Purchases */}
-                <div className="space-y-4">
-                    <h3 className="font-bold text-zinc-400 text-xs px-2">مشترياتي</h3>
-                    {orders.filter(o => o.buyerId === user.uid).reverse().map(order => (
-                        <div key={order.id} className="bg-white p-5 rounded-3xl border shadow-sm flex justify-between items-center">
-                            <div>
-                                <h4 className="font-bold text-sm">{order.productName}</h4>
-                                <p className="text-[10px] text-zinc-500 mt-1">{order.status === 'pending' ? 'بانتظار البائع' : order.status === 'delivering' ? `الشحن: ${order.deliveryFee} ج.م` : 'وصلت ✅'}</p>
-                            </div>
-                            {order.status === 'delivered' && <button onClick={() => remove(ref(db, `orders/${order.id}`))} className="text-red-500 text-xs font-bold bg-red-50 px-3 py-2 rounded-lg">حذف</button>}
-                        </div>
-                    ))}
-                </div>
             </div>
         )}
 
@@ -256,6 +292,7 @@ export default function Dashboard({ user }) {
                 <div className="bg-white p-8 rounded-3xl shadow-sm inline-block w-full max-w-sm">
                     <img src={user.photoURL} className="w-24 h-24 rounded-full mx-auto mb-4 border-4 border-yellow-400" />
                     <h2 className="text-xl font-black">{user.displayName}</h2>
+                    {isAdmin && <span className="bg-red-500 text-white px-3 py-1 rounded-full text-[10px] font-black mt-2 inline-block">ADMIN</span>}
                     <button onClick={() => signOut(auth)} className="mt-6 bg-red-50 text-red-500 px-8 py-3 rounded-xl font-bold text-xs">تسجيل خروج</button>
                 </div>
             </div>
@@ -304,16 +341,25 @@ export default function Dashboard({ user }) {
         </div>
       )}
 
-      {/* Chat Modal */}
+      {/* Chat Modal (مع زر الحظر للأدمن) */}
       {messageModal.show && (
         <div className="fixed inset-0 bg-black/80 z-[100] flex flex-col items-center justify-center p-4">
             <div className="bg-white w-full max-w-md h-[80vh] rounded-3xl flex flex-col overflow-hidden relative">
                 <div className="p-4 border-b flex justify-between items-center bg-zinc-50">
-                    <span className="font-black">{messageModal.receiverName}</span>
+                    <div className="flex items-center gap-2">
+                        <span className="font-black">{messageModal.receiverName}</span>
+                        {/* 🛑 زرار الحظر (يظهر للأدمن فقط) */}
+                        {isAdmin && (
+                            <button onClick={() => toggleBanUser(messageModal.receiverId, false)} className="bg-red-100 text-red-600 px-3 py-1 rounded-full text-[10px] font-bold hover:bg-red-600 hover:text-white transition-colors">
+                                🚫 حظر المستخدم
+                            </button>
+                        )}
+                    </div>
                     <button onClick={() => setMessageModal({ show: false, receiverId: '', receiverName: '' })}>✕</button>
                 </div>
                 <div className="flex-1 overflow-y-auto p-4 space-y-2">
-                    {myMessages.filter(m => m.fromId === messageModal.receiverId || m.toId === messageModal.receiverId).sort((a,b) => new Date(a.date || 0) - new Date(b.date || 0)).map((msg, i) => (
+                    {/* هنا خليت الرسايل تترتب صح حسب التاريخ */}
+                    {(myMessages || []).filter(m => m && (m.fromId === messageModal.receiverId || m.toId === messageModal.receiverId)).sort((a,b) => new Date(a.date || 0) - new Date(b.date || 0)).map((msg, i) => (
                         <div key={i} className={`flex ${msg.fromId === user.uid ? 'justify-end' : 'justify-start'}`}>
                             <div className={`p-3 rounded-xl max-w-[80%] text-sm font-bold ${msg.fromId === user.uid ? 'bg-black text-white' : 'bg-zinc-100'}`}>
                                 {msg.text}
@@ -324,7 +370,7 @@ export default function Dashboard({ user }) {
                 </div>
                 <div className="p-4 border-t flex gap-2">
                     <input className="flex-1 bg-zinc-100 p-3 rounded-xl font-bold text-sm" placeholder="اكتب..." value={msgText} onChange={(e) => setMsgText(e.target.value)} />
-                    <button onClick={() => { if(msgText) { push(ref(db, `messages/${messageModal.receiverId}`), { fromName: user.displayName, fromId: user.uid, text: msgText, date: new Date().toISOString() }); push(ref(db, `messages/${user.uid}`), { fromName: user.displayName, fromId: user.uid, text: msgText, date: new Date().toISOString(), toId: messageModal.receiverId }); setMsgText(''); } }} className="bg-yellow-400 px-4 rounded-xl font-bold">➤</button>
+                    <button onClick={handleSendMessage} className="bg-yellow-400 px-4 rounded-xl font-bold">➤</button>
                 </div>
             </div>
         </div>
