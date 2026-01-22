@@ -3,9 +3,8 @@ import { db, auth } from '../firebaseConfig';
 import { ref, onValue, push, remove, update } from "firebase/database";
 import { signOut } from "firebase/auth";
 
-// --- 1. كارت المنتج (المحمي ضد الأخطاء) ---
+// --- 1. كارت المنتج (المحمي) ---
 const ProductCard = ({ item, onViewImage, onChat, onAddToCart, isOwner, onDelete }) => {
-  // حماية: لو المنتج مش موجود ما ترسمش حاجة
   if (!item) return null;
   const isSold = item.status === 'sold';
 
@@ -13,10 +12,10 @@ const ProductCard = ({ item, onViewImage, onChat, onAddToCart, isOwner, onDelete
     <div className={`bg-white rounded-[2rem] border border-zinc-100 overflow-hidden shadow-sm hover:shadow-xl transition-all group relative ${isSold ? 'opacity-60 grayscale' : ''}`}>
       <div className="h-64 overflow-hidden relative bg-zinc-50">
         <img 
-          src={item.image || 'https://via.placeholder.com/300'} 
+          src={item.image || 'https://via.placeholder.com/300?text=No+Image'} 
           className="w-full h-full object-cover cursor-pointer group-hover:scale-105 transition-transform duration-700" 
           onClick={() => onViewImage(item.image)} 
-          alt={item.name || 'منتج'}
+          alt={item.name || 'Product'}
         />
         <div className="absolute top-4 right-4 bg-yellow-400 text-black px-4 py-1 rounded-full font-black text-[10px] shadow-lg z-10">
           {item.category || 'عام'}
@@ -31,7 +30,7 @@ const ProductCard = ({ item, onViewImage, onChat, onAddToCart, isOwner, onDelete
         )}
       </div>
       <div className="p-6 text-right">
-        <h3 className="font-black text-zinc-900 text-base mb-1 line-clamp-1">{item.name || 'بدون اسم'}</h3>
+        <h3 className="font-black text-zinc-900 text-base mb-1 line-clamp-1">{item.name || 'منتج بدون اسم'}</h3>
         <p className="text-[10px] text-zinc-400 font-bold mb-4">الحالة: {item.condition === 'new' ? 'جديد ✨' : 'مستعمل 🛠️'}</p>
         
         <div className="flex items-center justify-between mb-4 bg-zinc-50 p-3 rounded-2xl">
@@ -66,11 +65,13 @@ export default function Dashboard({ user }) {
   const [searchTerm, setSearchTerm] = useState('');
   const [toast, setToast] = useState({ show: false, msg: '' });
 
+  // Data States initialized with empty arrays
   const [products, setProducts] = useState([]);
   const [myMessages, setMyMessages] = useState([]);
   const [orders, setOrders] = useState([]);
   const [supportMsg, setSupportMsg] = useState('');
   
+  // UI States
   const [showModal, setShowModal] = useState(false);
   const [addressModal, setAddressModal] = useState({ show: false, product: null, location: '' });
   const [viewImage, setViewImage] = useState(null);
@@ -96,26 +97,38 @@ export default function Dashboard({ user }) {
   useEffect(() => {
     const timer = setTimeout(() => setShowSplash(false), 3500);
     
-    // استخدام try-catch داخل الـ effect لمنع الكراش
-    try {
+    // Safety Wrapper for Data Fetching
+    const fetchData = () => {
         if(user?.uid) {
             onValue(ref(db, 'orders'), (snap) => {
-                const data = snap.val() || {}; // حماية ضد الـ null
-                setOrders(Object.entries(data).map(([id, val]) => ({ id, ...val })));
+                const data = snap.val();
+                // الحماية هنا: لو الداتا null رجع مصفوفة فاضية
+                if (data) {
+                    setOrders(Object.entries(data).map(([id, val]) => ({ id, ...val })));
+                } else {
+                    setOrders([]);
+                }
             });
             onValue(ref(db, `messages/${user.uid}`), (snap) => {
-                const data = snap.val() || {}; // حماية ضد الـ null
-                setMyMessages(Object.entries(data).map(([id, val]) => ({ id, ...val })));
+                const data = snap.val();
+                if (data) {
+                    setMyMessages(Object.entries(data).map(([id, val]) => ({ id, ...val })));
+                } else {
+                    setMyMessages([]);
+                }
             });
         }
         onValue(ref(db, 'products'), (snap) => {
-            const data = snap.val() || {}; // حماية ضد الـ null
-            setProducts(Object.entries(data).map(([id, val]) => ({ id, ...val })).reverse());
+            const data = snap.val();
+            if (data) {
+                setProducts(Object.entries(data).map(([id, val]) => ({ id, ...val })).reverse());
+            } else {
+                setProducts([]);
+            }
         });
-    } catch (err) {
-        console.error("Firebase Error handled:", err);
-    }
+    };
 
+    fetchData();
     return () => clearTimeout(timer);
   }, [user]);
 
@@ -131,23 +144,21 @@ export default function Dashboard({ user }) {
     return normalize(p.name).includes(search) || normalize(p.category).includes(search);
   });
 
-  // حماية قائمة المحادثات من البيانات البايظة
-  const uniqueConversations = myMessages 
+  const uniqueConversations = myMessages.length > 0 
     ? [...new Map(myMessages.filter(m => m && m.fromId !== 'Admin' && m.toId !== 'Admin').map(m => [m.fromId === user.uid ? m.toId : m.fromId, m])).values()]
     : [];
 
-  // دالة الوقت الآمنة جداً (Anti-Crash)
   const formatTime = (dateString) => {
+      if (!dateString) return "";
       try {
-          if (!dateString) return "";
           return new Date(dateString).toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'});
       } catch (e) {
           return "";
       }
   };
 
-  // لو مفيش يوزر لسه، اظهر شاشة تحميل بدل ما يضرب Error
-  if (!user) return <div className="min-h-screen flex items-center justify-center bg-black text-yellow-400 font-black animate-pulse">جاري التحميل...</div>;
+  // Loading Screen Safety
+  if (!user) return <div className="min-h-screen flex items-center justify-center bg-zinc-900 text-yellow-400 font-black animate-pulse">جاري التحميل...</div>;
 
   return (
     <div className="min-h-screen bg-[#F8F8F8] pb-24 font-cairo select-none overflow-x-hidden" dir="rtl">
@@ -159,7 +170,7 @@ export default function Dashboard({ user }) {
            <h1 className="text-white font-black text-4xl mt-8 italic tracking-tighter">AL-WARSHA</h1>
            <div className="mt-8 text-center animate-pulse">
               <p className="text-zinc-500 text-sm font-bold tracking-[0.3em] uppercase">Welcome Back</p>
-              <p className="text-yellow-400 text-xl font-black mt-2">{user?.displayName || 'يا غالي'}</p>
+              <p className="text-yellow-400 text-xl font-black mt-2">{user.displayName || 'User'}</p>
            </div>
         </div>
       )}
@@ -208,6 +219,7 @@ export default function Dashboard({ user }) {
           </>
         )}
 
+        {/* البريد (Safe) */}
         {activeTab === 'inbox' && (
             <div className="max-w-2xl mx-auto space-y-4 animate-fadeIn">
                 <h2 className="text-3xl font-black mb-8 text-right px-4">الرسائل <span className="text-yellow-400">.</span></h2>
@@ -215,9 +227,9 @@ export default function Dashboard({ user }) {
                   uniqueConversations.map(chat => (
                     <div key={chat.id} className="flex gap-3 items-center group">
                         <div onClick={() => setMessageModal({ show: true, receiverId: chat.fromId === user.uid ? chat.toId : chat.fromId, receiverName: chat.fromName })} className="flex-1 bg-white p-5 rounded-[2.5rem] flex items-center gap-5 cursor-pointer hover:shadow-xl transition-all border border-transparent hover:border-yellow-400">
-                            <div className="w-16 h-16 rounded-full bg-zinc-100 text-zinc-900 flex items-center justify-center font-black text-2xl shadow-inner">{chat.fromName?.[0] || '?'}</div>
+                            <div className="w-16 h-16 rounded-full bg-zinc-100 text-zinc-900 flex items-center justify-center font-black text-2xl shadow-inner">{chat.fromName ? chat.fromName[0] : '?'}</div>
                             <div className="flex-1 text-right">
-                                <h4 className="font-black text-zinc-900 text-lg">{chat.fromName || 'مستخدم'}</h4>
+                                <h4 className="font-black text-zinc-900 text-lg">{chat.fromName}</h4>
                                 <p className="text-xs text-zinc-400 font-bold mt-1 line-clamp-1">{chat.text || "رسالة صوتية/صورة"}</p>
                             </div>
                             <span className="text-2xl text-zinc-200 group-hover:text-yellow-400 transition-colors">💬</span>
@@ -228,13 +240,13 @@ export default function Dashboard({ user }) {
             </div>
         )}
 
+        {/* العربة (Safe) */}
         {activeTab === 'cart' && (
             <div className="max-w-2xl mx-auto space-y-10 animate-fadeIn">
                 <h2 className="text-3xl font-black text-right px-4">متابعة الطلبات <span className="text-yellow-400">.</span></h2>
                 
-                {/* قسم البائع */}
                 <div className="space-y-4">
-                    <h3 className="font-black text-zinc-400 text-xs px-4 uppercase tracking-widest">طلبات واردة (ناس عايزة تشتري مني)</h3>
+                    <h3 className="font-black text-zinc-400 text-xs px-4 uppercase tracking-widest">طلبات واردة</h3>
                     {orders.filter(o => o.sellerId === user.uid).length === 0 && <p className="text-center text-zinc-300 text-xs font-bold py-4">مفيش طلبات جديدة</p>}
                     {orders.filter(o => o.sellerId === user.uid).reverse().map(order => (
                         <div key={order.id} className="bg-zinc-900 text-white p-6 rounded-[2.5rem] shadow-2xl space-y-6 relative overflow-hidden">
@@ -268,7 +280,6 @@ export default function Dashboard({ user }) {
                     ))}
                 </div>
 
-                {/* قسم المشتري */}
                 <div className="space-y-4">
                     <h3 className="font-black text-zinc-400 text-xs px-4 uppercase tracking-widest">مشترياتي</h3>
                     {orders.filter(o => o.buyerId === user.uid).reverse().map(order => (
@@ -293,6 +304,7 @@ export default function Dashboard({ user }) {
             </div>
         )}
 
+        {/* Support */}
         {activeTab === 'support' && (
             <div className="max-w-md mx-auto text-center space-y-6 pt-10">
                 <div className="w-20 h-20 bg-zinc-100 rounded-full mx-auto flex items-center justify-center text-4xl shadow-inner">🎧</div>
@@ -304,11 +316,12 @@ export default function Dashboard({ user }) {
             </div>
         )}
 
+        {/* Profile */}
         {activeTab === 'profile' && (
             <div className="max-w-xl mx-auto pt-10">
                 <div className="bg-white p-10 rounded-[3rem] shadow-xl text-center relative overflow-hidden mb-10">
                     <div className="absolute top-0 left-0 w-full h-32 bg-zinc-900"></div>
-                    <img src={user.photoURL} className="w-32 h-32 rounded-[2rem] mx-auto border-8 border-white shadow-2xl relative z-10 object-cover" />
+                    <img src={user.photoURL || 'https://via.placeholder.com/150'} className="w-32 h-32 rounded-[2rem] mx-auto border-8 border-white shadow-2xl relative z-10 object-cover" />
                     <h2 className="text-3xl font-black mt-6 text-zinc-900">{user.displayName}</h2>
                     <p className="text-zinc-400 text-sm font-bold mt-1">{user.email}</p>
                     <button onClick={() => signOut(auth).then(() => window.location.reload())} className="mt-8 bg-red-50 text-red-500 px-10 py-3 rounded-2xl font-black text-xs hover:bg-red-500 hover:text-white transition-all">تسجيل خروج</button>
@@ -317,12 +330,11 @@ export default function Dashboard({ user }) {
         )}
       </main>
 
-      {/* مودال العنوان (بديل Prompt) */}
+      {/* Address Modal */}
       {addressModal.show && (
         <div className="fixed inset-0 bg-black/60 z-[200] flex items-end md:items-center justify-center p-4 backdrop-blur-sm">
             <div className="bg-white w-full max-w-md p-8 rounded-[3rem] shadow-2xl animate-slideUp">
                 <h2 className="text-2xl font-black text-center mb-2">عنوان التوصيل 🚚</h2>
-                <p className="text-center text-zinc-400 text-xs font-bold mb-8">عشان المندوب يقدر يوصلك، محتاجين العنوان بالتفصيل</p>
                 <div className="bg-zinc-50 p-2 rounded-3xl border border-zinc-200 mb-4">
                     <input autoFocus className="w-full bg-transparent p-4 outline-none font-bold text-zinc-900 text-center" placeholder="المنطقة - اسم الشارع - رقم العمارة" value={addressModal.location} onChange={(e) => setAddressModal({...addressModal, location: e.target.value})} />
                 </div>
@@ -338,7 +350,7 @@ export default function Dashboard({ user }) {
         </div>
       )}
 
-      {/* مودال النشر (التصميم الفخم اللي طلبه المستخدم) */}
+      {/* Post Modal (FANCY) */}
       {showModal && (
         <div className="fixed inset-0 bg-zinc-900/90 z-[120] flex items-center justify-center p-4 backdrop-blur-md">
           <div className="bg-white w-full max-w-lg p-8 rounded-[3rem] shadow-2xl overflow-y-auto max-h-[90vh] animate-slideUp relative">
@@ -382,12 +394,12 @@ export default function Dashboard({ user }) {
         </div>
       )}
 
-      {/* زر النشر العائم */}
+      {/* Floating Button */}
       {activeTab === 'home' && (
         <button onClick={() => setShowModal(true)} className="fixed bottom-8 left-8 w-16 h-16 bg-zinc-900 text-yellow-400 rounded-[2rem] shadow-2xl text-3xl font-black z-40 flex items-center justify-center hover:scale-110 active:scale-90 transition-all border-4 border-white">+</button>
       )}
 
-      {/* مودال الشات */}
+      {/* Message Modal (Safe) */}
       {messageModal.show && (
         <div className="fixed inset-0 bg-black/80 z-[150] flex flex-col md:justify-center md:items-center">
             <div className="bg-white w-full md:max-w-md h-full md:h-[80vh] md:rounded-[3rem] flex flex-col overflow-hidden shadow-2xl animate-slideUp">
