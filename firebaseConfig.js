@@ -1,9 +1,10 @@
 import { initializeApp } from "firebase/app";
 import { getAuth } from "firebase/auth";
 import { getDatabase } from "firebase/database";
+// 👇 1. استيراد مكتبة الحماية (مهم جداً)
+import { initializeAppCheck, ReCaptchaEnterpriseProvider } from "firebase/app-check";
 
 const firebaseConfig = {
-  // المفتاح اللي أنت بعته
   apiKey: "AIzaSyAmxDBecXP2bikBqI9PANfcEkCq2s4DXDg",
   authDomain: "alwarsha-cf816.firebaseapp.com",
   databaseURL: "https://alwarsha-cf816-default-rtdb.firebaseio.com",
@@ -17,6 +18,14 @@ const firebaseConfig = {
 // تهيئة التطبيق
 const app = initializeApp(firebaseConfig);
 
-// السطرين دول هما اللي بيشغلوا زرار جوجل وقاعدة البيانات
+// 👇 2. تفعيل الحماية بالمفتاح اللي جبناه
+if (typeof window !== "undefined") {
+  const appCheck = initializeAppCheck(app, {
+    // ده المفتاح اللي طلعناه من جوجل كلاود
+    provider: new ReCaptchaEnterpriseProvider('6LdZJlIsAAAAAGK6574jzD_yjyxFuUFE-I2jXi5y'),
+    isTokenAutoRefreshEnabled: true
+  });
+}
+
 export const auth = getAuth(app);
 export const db = getDatabase(app);
