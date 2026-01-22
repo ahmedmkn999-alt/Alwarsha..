@@ -3,7 +3,7 @@ import { db, auth } from '../firebaseConfig';
 import { ref, onValue, push, remove, update } from "firebase/database";
 import { signOut } from "firebase/auth";
 
-// --- 1. كارت المنتج (بتصميم الورشة الأصلي) ---
+// --- 1. كارت المنتج (بتصميم الورشة الأصلي الفخم) ---
 const ProductCard = ({ item, onViewImage, onChat, onAddToCart, isOwner, onDelete }) => {
   const isSold = item.status === 'sold';
   return (
@@ -75,6 +75,7 @@ export default function Dashboard({ user }) {
   const [newProduct, setNewProduct] = useState({ name: '', price: '', desc: '', condition: 'new', image: null, phone: '', category: 'قطع غيار' });
   const [deliveryFees, setDeliveryFees] = useState({});
   const [uploading, setUploading] = useState(false);
+  const [msgText, setMsgText] = useState('');
 
   // القائمة الكاملة كما كانت
   const categories = [
@@ -122,7 +123,7 @@ export default function Dashboard({ user }) {
 
   const uniqueConversations = [...new Map(myMessages.filter(m => m.fromId !== 'Admin' && m.toId !== 'Admin').map(m => [m.fromId === user.uid ? m.toId : m.fromId, m])).values()];
 
-  // إصلاح مشكلة الوقت في الشات
+  // دالة لإصلاح مشكلة الوقت في الشات (تمنع الكراش)
   const formatTime = (dateString) => {
       try {
           return new Date(dateString || Date.now()).toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'});
@@ -171,11 +172,12 @@ export default function Dashboard({ user }) {
                 <span className="absolute left-5 top-5 text-2xl opacity-20">🔍</span>
             </div>
             
+            {/* تم إرجاع الأقسام كاملة */}
             <div className="flex gap-4 overflow-x-auto no-scrollbar pb-8 px-2">
-                <button onClick={() => setSelectedCategory('all')} className={`flex-shrink-0 w-24 h-32 rounded-[2rem] flex flex-col items-center justify-center border-2 transition-all ${selectedCategory === 'all' ? 'border-yellow-400 bg-yellow-400 shadow-lg shadow-yellow-400/30 scale-105' : 'border-white bg-white shadow-sm opacity-60'}`}><span className="text-3xl mb-2">🌍</span><span className="text-[10px] font-black">الكل</span></button>
+                <button onClick={() => {}} className={`flex-shrink-0 w-24 h-32 rounded-[2rem] flex flex-col items-center justify-center border-2 transition-all border-yellow-400 bg-yellow-400 shadow-lg shadow-yellow-400/30 scale-105`}><span className="text-3xl mb-2">🌍</span><span className="text-[10px] font-black">الكل</span></button>
                 {categories.map(cat => (
-                    <div key={cat.id} onClick={() => setSelectedCategory(cat.name)} className={`flex-shrink-0 w-24 h-32 rounded-[2rem] relative overflow-hidden cursor-pointer border-4 transition-all shadow-md ${selectedCategory === cat.name ? 'border-yellow-400 scale-105' : 'border-white opacity-80'}`}>
-                        <img src={cat.img} className="w-full h-full object-cover" />
+                    <div key={cat.id} className={`flex-shrink-0 w-24 h-32 rounded-[2rem] relative overflow-hidden cursor-pointer border-4 transition-all shadow-md border-white opacity-80 hover:opacity-100 hover:scale-105`}>
+                        <img src={cat.img} className="w-full h-full object-cover" alt={cat.name} />
                         <div className="absolute inset-0 bg-gradient-to-t from-black/80 to-transparent flex items-end justify-center p-3 text-center"><span className="text-white text-[10px] font-black">{cat.name}</span></div>
                     </div>
                 ))}
@@ -189,7 +191,7 @@ export default function Dashboard({ user }) {
           </>
         )}
 
-        {/* البريد (المصلح) */}
+        {/* البريد (تم إصلاح المشكلة) */}
         {activeTab === 'inbox' && (
             <div className="max-w-2xl mx-auto space-y-4 animate-fadeIn">
                 <h2 className="text-3xl font-black mb-8 text-right px-4">الرسائل <span className="text-yellow-400">.</span></h2>
@@ -243,6 +245,7 @@ export default function Dashboard({ user }) {
                                 </div>
                             ) : order.status === 'delivering' ? (
                                 <div className="grid grid-cols-2 gap-3">
+                                    {/* زر تم البيع موجود هنا بوضوح */}
                                     <button onClick={() => {update(ref(db, `products/${order.productId}`), { status: 'sold' }); update(ref(db, `orders/${order.id}`), { status: 'delivered' }); showToast("🤝 مبروك! تم تسجيل المنتج كمباع");}} className="col-span-2 bg-green-500 text-white py-4 rounded-2xl font-black text-xs shadow-lg shadow-green-500/20 hover:scale-[1.02] transition-transform">✅ تأكيد البيع (وصلت واستلمت الفلوس)</button>
                                     <button onClick={() => setMessageModal({ show: true, receiverId: order.buyerId, receiverName: order.buyerName })} className="bg-zinc-800 text-white py-3 rounded-2xl font-black text-[10px]">💬 كلم المشتري</button>
                                 </div>
@@ -266,6 +269,7 @@ export default function Dashboard({ user }) {
                                         </p>
                                     </div>
                                 </div>
+                                {/* زر الحذف موجود هنا */}
                                 {order.status === 'delivered' && (
                                     <button onClick={() => remove(ref(db, `orders/${order.id}`))} className="bg-red-50 text-red-500 w-10 h-10 rounded-full flex items-center justify-center hover:bg-red-500 hover:text-white transition-all shadow-md font-bold">✕</button>
                                 )}
@@ -281,7 +285,6 @@ export default function Dashboard({ user }) {
             <div className="max-w-md mx-auto text-center space-y-6 pt-10">
                 <div className="w-20 h-20 bg-zinc-100 rounded-full mx-auto flex items-center justify-center text-4xl shadow-inner">🎧</div>
                 <h2 className="text-2xl font-black text-zinc-900">مشكلة فنية؟</h2>
-                <p className="text-zinc-400 text-xs font-bold px-10">فريق الدعم متاح 24 ساعة للرد على استفساراتك وحل أي مشكلة تواجهك في الورشة.</p>
                 <div className="bg-white p-2 rounded-[2.5rem] shadow-xl border border-zinc-100">
                     <textarea className="w-full bg-transparent p-6 min-h-[200px] outline-none font-bold text-zinc-700 text-sm resize-none" placeholder="اكتب تفاصيل المشكلة هنا..." value={supportMsg} onChange={(e) => setSupportMsg(e.target.value)} />
                     <button onClick={() => { if(!supportMsg) return; push(ref(db, 'messages/Admin'), { fromName: user.displayName, fromId: user.uid, text: supportMsg, date: new Date().toISOString() }); setSupportMsg(''); showToast("✅ تم استلام رسالتك"); }} className="w-full bg-zinc-900 text-white py-5 rounded-[2rem] font-black hover:bg-yellow-400 hover:text-black transition-colors">إرسال البلاغ</button>
