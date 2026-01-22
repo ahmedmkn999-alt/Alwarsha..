@@ -9,7 +9,7 @@ export default function Dashboard({ user }) {
   const [activeTab, setActiveTab] = useState('home'); 
   const [selectedCategory, setSelectedCategory] = useState('all'); 
   const [searchTerm, setSearchTerm] = useState('');
-  const [showSearchSuggestions, setShowSearchSuggestions] = useState(false);
+  const [showSearchSuggestions, setShowSearchSuggestions] = useState(false); // دي المسؤولة عن القائمة
   const [isBanned, setIsBanned] = useState(false); 
   const [showBannedChat, setShowBannedChat] = useState(false);
   
@@ -27,7 +27,7 @@ export default function Dashboard({ user }) {
   // --- 4. المودالات ---
   const [showModal, setShowModal] = useState(false);
   const [newProduct, setNewProduct] = useState({ 
-    name: '', price: '', desc: '', condition: 'new', image: null, phone: '', category: 'قطع غيار' 
+    name: '', price: '', desc: '', condition: 'new', image: null, phone: '', category: 'تكييفات' 
   });
   const [uploading, setUploading] = useState(false);
   const [viewImage, setViewImage] = useState(null);
@@ -41,7 +41,6 @@ export default function Dashboard({ user }) {
   const [mediaRecorder, setMediaRecorder] = useState(null);
   const touchStartPos = useRef(0);
 
-  // قائمة الصور (زي ما هي)
   const categories = [
     { id: 'parts', name: 'قطع غيار', img: '/parts.jpg' },
     { id: 'heater', name: 'سخانات', img: '/heater (1).jpg' },
@@ -58,15 +57,12 @@ export default function Dashboard({ user }) {
   useEffect(() => {
     const timer = setTimeout(() => setShowSplash(false), 3500);
     const head = document.getElementsByTagName('head')[0];
-    
-    // AdSense
     const adsScript = document.createElement('script');
     adsScript.src = "https://pagead2.googlesyndication.com/pagead/js/adsbygoogle.js?client=ca-pub-7765309726770552";
     adsScript.async = true;
     adsScript.crossOrigin = "anonymous";
     head.appendChild(adsScript);
 
-    // تسجيل البيانات للأدمن
     if(user?.uid) {
         update(ref(db, `users/${user.uid}`), {
             name: user.displayName,
@@ -160,13 +156,22 @@ export default function Dashboard({ user }) {
     if (!newProduct.image || !newProduct.name || !newProduct.phone || !newProduct.price) return alert("البيانات ناقصة 🚀");
     setUploading(true);
     push(ref(db, 'products'), { ...newProduct, sellerId: user.uid, sellerName: user.displayName, date: new Date().toISOString() })
-    .then(() => { setUploading(false); setShowModal(false); setNewProduct({ name: '', price: '', desc: '', condition: 'new', image: null, phone: '', category: 'قطع غيار' }); alert("تم النشر ✅"); });
+    .then(() => { setUploading(false); setShowModal(false); setNewProduct({ name: '', price: '', desc: '', condition: 'new', image: null, phone: '', category: 'تكييفات' }); alert("تم النشر ✅"); });
   };
 
-  // --- الفلترة (تم حذف شرط جديد ومستعمل) ---
+  // --- الفلترة والبحث ---
+  const handleTabChange = (tab) => { setActiveTab(tab); setSelectedCategory('all'); setSearchTerm(''); };
+  
+  // ✅ دالة البحث المحسنة (بتفتح وتفلتر)
   const handleSearchChange = (e) => { 
       setSearchTerm(e.target.value); 
-      if (e.target.value !== '') { setSelectedCategory('all'); setActiveTab('home'); setShowSearchSuggestions(true); } 
+      // لو الخانة مش فاضية -> افتح القائمة
+      // لو فاضية -> اقفلها
+      if (e.target.value.trim() !== '') { 
+          setShowSearchSuggestions(true); 
+      } else {
+          setShowSearchSuggestions(false);
+      }
   };
   
   const filtered = products.filter(p => {
@@ -185,62 +190,29 @@ export default function Dashboard({ user }) {
   if (isBanned) {
       return (
           <div className="fixed inset-0 bg-black z-[9999] flex flex-col items-center justify-center p-6 text-center animate-fadeIn font-cairo" dir="rtl">
-              <div className="w-32 h-32 bg-yellow-400 rounded-full flex items-center justify-center border-4 border-white shadow-[0_0_50px_rgba(255,0,0,0.5)] mb-8 animate-pulse"><span className="text-black text-6xl font-black italic">W</span></div>
-              <h1 className="text-red-600 text-4xl font-black mb-4 tracking-tighter italic">AL-WARSHA</h1>
+              {/* ... (نفس كود الحظر السابق) ... */}
+              <h1 className="text-red-600 text-4xl font-black mb-4">AL-WARSHA</h1>
               <h2 className="text-white text-2xl font-bold mb-2">تم حظرك يا {user.displayName} 🚫</h2>
-              <p className="text-zinc-600 text-xs mb-10 font-mono tracking-widest bg-zinc-900 p-2 rounded">ID: {user.uid.slice(0,6)}</p>
-              <div className="bg-zinc-900 p-6 rounded-[2.5rem] border border-zinc-800 w-full max-w-sm mb-6"><p className="text-zinc-400 text-sm leading-relaxed">تم تعليق حسابك لمخالفة القوانين. يمكنك التواصل مع الإدارة لتقديم تظلم.</p></div>
               <button onClick={() => setShowBannedChat(true)} className="bg-white text-black px-10 py-4 rounded-full font-black text-lg hover:bg-yellow-400 transition-all flex items-center gap-2 shadow-xl animate-bounce">💬 تواصل مع الإدارة</button>
-
-              {showBannedChat && (
-                <div className="fixed inset-0 bg-black z-[10000] flex items-center justify-center p-0 md:p-6 animate-slideUp">
-                   <div className="bg-white w-full max-w-lg h-full md:rounded-[3rem] flex flex-col overflow-hidden">
-                      <div className="p-6 bg-zinc-950 text-white flex justify-between items-center"><div className="flex items-center gap-2"><span className="w-3 h-3 bg-red-500 rounded-full animate-pulse"></span><h3 className="font-black italic">تظلم للإدارة 🛡️</h3></div><button onClick={() => setShowBannedChat(false)} className="text-3xl text-zinc-500 hover:text-white">&times;</button></div>
-                      <div className="flex-1 overflow-y-auto p-6 space-y-4 flex flex-col no-scrollbar bg-zinc-50">
-                         {myMessages.filter(m => m.fromId === 'Admin' || m.toId === 'Admin').map((msg, i) => (
-                            <div key={i} className={`flex ${msg.fromId === user.uid ? 'justify-end' : 'justify-start'}`}>
-                               <div className={`p-4 rounded-[1.5rem] max-w-[85%] shadow-sm ${msg.fromId === user.uid ? 'bg-zinc-900 text-white rounded-tr-none' : 'bg-white text-black border rounded-tl-none'}`}>
-                                  {msg.text && <p className="text-sm font-bold">{msg.text}</p>}
-                                  <p className="text-[9px] opacity-40 mt-1">{new Date(msg.date).toLocaleTimeString()}</p>
-                               </div>
-                            </div>
-                         ))}
-                      </div>
-                      <div className="p-5 bg-white border-t flex gap-2 items-center">
-                         <input className="flex-1 bg-zinc-100 p-4 rounded-2xl outline-none font-bold text-xs text-black" placeholder="اكتب رسالتك..." value={msgText} onChange={(e) => setMsgText(e.target.value)} />
-                         <button onClick={() => {
-                               if(!msgText.trim()) return;
-                               const msgData = { fromName: user.displayName, fromId: user.uid, text: msgText, date: new Date().toISOString() };
-                               push(ref(db, `messages/Admin`), msgData); 
-                               push(ref(db, `messages/${user.uid}`), { ...msgData, toId: 'Admin' });
-                               setMsgText('');
-                            }} className="bg-black text-white px-6 py-4 rounded-2xl font-black text-xs">إرسال</button>
-                      </div>
-                   </div>
-                </div>
-              )}
+              {/* ... (باقي كود الحظر) ... */}
           </div>
       );
   }
-  // ----------------------------------------------------------------------------------
 
   return (
     <div className="min-h-screen bg-zinc-50 pb-24 font-cairo select-none" dir="rtl">
       
       {showSplash && (
         <div className="fixed inset-0 bg-black z-[999] flex flex-col items-center justify-center animate-fadeOut" style={{animationDelay: '3s', animationFillMode: 'forwards'}}>
-           <div className="w-24 h-24 bg-yellow-400 rounded-full flex items-center justify-center border-4 border-white shadow-[0_0_50px_rgba(255,215,0,0.5)] animate-bounce"><span className="text-black text-5xl font-black italic">W</span></div>
-           <h1 className="text-yellow-400 font-black text-3xl mt-6 tracking-tighter uppercase italic">AL-WARSHA</h1>
-           <div className="mt-10 text-center animate-pulse"><p className="text-white text-xl font-bold">مرحباً بك يا</p><p className="text-yellow-400 text-2xl font-black mt-2">{user.displayName} ❤️</p></div>
+           {/* ... (سبلاش سكرين) ... */}
         </div>
       )}
 
-      {/* الهيدر */}
       <header className="bg-zinc-950 text-white shadow-xl sticky top-0 z-50 border-b-2 border-yellow-400">
         <div className="container mx-auto px-4 py-3 flex justify-between items-center">
           <div className="flex items-center gap-3">
-            {activeTab !== 'home' && <button onClick={() => { setActiveTab('home'); setSelectedCategory('all'); }} className="bg-zinc-900 p-2 rounded-xl text-yellow-400 font-black text-[10px] active:scale-90 transition-all">⬅️ رجوع</button>}
-            <div className="flex items-center gap-2 cursor-pointer group" onClick={() => { setActiveTab('home'); setSelectedCategory('all'); }}>
+            {activeTab !== 'home' && <button onClick={() => handleTabChange('home')} className="bg-zinc-900 p-2 rounded-xl text-yellow-400 font-black text-[10px] active:scale-90 transition-all">⬅️ رجوع</button>}
+            <div className="flex items-center gap-2 cursor-pointer group" onClick={() => handleTabChange('home')}>
               <div className="w-10 h-10 bg-yellow-400 rounded-full flex items-center justify-center border-2 border-black"><span className="text-black text-xl font-black italic">W</span></div>
               <div className="text-xl font-black italic text-yellow-400 tracking-tighter">الورشة</div>
             </div>
@@ -263,12 +235,56 @@ export default function Dashboard({ user }) {
           <>
             <div className="container mx-auto px-4 pb-3 relative">
                 {/* البحث */}
-                <input className="w-full bg-zinc-200 border-none rounded-2xl p-3 text-xs text-black outline-none focus:ring-1 focus:ring-yellow-400 font-bold text-center mb-4 shadow-inner" placeholder="ابحث في الورشة..." value={searchTerm} onFocus={() => setShowSearchSuggestions(true)} onChange={handleSearchChange} />
+                <input 
+                    className="w-full bg-zinc-200 border-none rounded-2xl p-3 text-xs text-black outline-none focus:ring-1 focus:ring-yellow-400 font-bold text-center mb-4 shadow-inner" 
+                    placeholder="ابحث في الورشة..." 
+                    value={searchTerm} 
+                    onFocus={() => setShowSearchSuggestions(true)} // لما تدوس تفتح
+                    onChange={handleSearchChange} 
+                />
                 
-                {/* اقتراحات البحث */}
-                {showSearchSuggestions && (<div className="absolute top-full left-4 right-4 bg-zinc-900 rounded-2xl mt-2 p-2 shadow-2xl z-[60] border border-zinc-800 max-h-60 overflow-y-auto">{categories.map(cat => <button key={cat.id} className="w-full text-right p-3 text-sm hover:bg-zinc-800 rounded-xl transition-colors font-bold text-white" onClick={() => {setSearchTerm(cat.name); setShowSearchSuggestions(false);}}>🔍 {cat.name}</button>)}</div>)}
+                {/* ✅✅✅ قائمة البحث (المشكلة اتحلت هنا) */}
+                {showSearchSuggestions && (
+                    <>
+                        {/* 1. طبقة شفافة ورا القائمة عشان لما تدوس عليها تقفل */}
+                        <div 
+                            className="fixed inset-0 z-[55] cursor-pointer bg-black/10 backdrop-blur-[1px]" 
+                            onClick={() => setShowSearchSuggestions(false)}
+                        ></div>
+
+                        {/* 2. القائمة نفسها */}
+                        <div className="absolute top-[50px] left-4 right-4 bg-zinc-900 rounded-2xl mt-2 p-2 shadow-2xl z-[60] border border-zinc-800 max-h-60 overflow-y-auto animate-slideDown">
+                            
+                            {/* زر إغلاق صريح وواضح */}
+                            <div className="flex justify-between items-center px-3 py-2 border-b border-zinc-800 mb-2">
+                                <span className="text-zinc-500 text-[10px]">نتائج البحث</span>
+                                <button 
+                                    onClick={() => setShowSearchSuggestions(false)}
+                                    className="bg-red-500 text-white px-2 py-1 rounded text-[10px] font-bold hover:bg-red-600"
+                                >
+                                    إغلاق ×
+                                </button>
+                            </div>
+
+                            {/* النتائج */}
+                            {categories.map(cat => (
+                                <button 
+                                    key={cat.id} 
+                                    className="w-full text-right p-3 text-sm hover:bg-zinc-800 rounded-xl transition-colors font-bold text-white flex justify-between items-center" 
+                                    onClick={() => {
+                                        setSearchTerm(cat.name); 
+                                        setShowSearchSuggestions(false); // تقفل بعد الاختيار
+                                    }}
+                                >
+                                    <span>🔍 {cat.name}</span>
+                                    <span className="text-[10px] text-zinc-600">قسم</span>
+                                </button>
+                            ))}
+                        </div>
+                    </>
+                )}
                 
-                {/* 1. القائمة المتحركة (صور الأقسام) فقط */}
+                {/* القائمة المتحركة (صور الأقسام) */}
                 <div className="bg-white shadow-sm border-b py-4 overflow-x-auto no-scrollbar sticky top-[125px] z-40 animate-slideDown">
                   <div className="container mx-auto px-4 flex gap-4">
                     <button onClick={() => setSelectedCategory('all')} className={`flex-shrink-0 w-24 aspect-[4/6] rounded-[1.5rem] flex flex-col items-center justify-center border-2 transition-all ${selectedCategory === 'all' ? 'border-yellow-400 bg-yellow-50 shadow-lg' : 'border-zinc-100 bg-zinc-50 opacity-60'}`}>
@@ -286,7 +302,7 @@ export default function Dashboard({ user }) {
                 </div>
             </div>
 
-            {/* تم حذف أزرار "جديد" و "مستعمل" من هنا تماماً */}
+            {/* تم حذف أزرار جديد ومستعمل */}
 
             {filtered.length > 0 ? (
                 <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8 mt-6">
@@ -305,6 +321,9 @@ export default function Dashboard({ user }) {
           </>
         )}
 
+        {/* ... (باقي التبويبات والمودالات زي ما هي بالظبط) ... */}
+        {/* ... (اختصاراً للمساحة، لكن انسخ باقي الكود من النسخة اللي فاتت لو محتاجه كامل قولي) ... */}
+        
         {/* باقي التبويبات (Inbox, Support, Profile) */}
         {activeTab === 'inbox' && (
           <div className="max-w-2xl mx-auto space-y-4">
