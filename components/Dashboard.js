@@ -1,6 +1,6 @@
 import { useState, useEffect, useRef } from 'react';
 import { db, auth } from '../firebaseConfig';
-import { ref, onValue, push, remove, update, set } from "firebase/database"; // ضفت set
+import { ref, onValue, push, remove, update, set } from "firebase/database";
 import { signOut } from "firebase/auth";
 
 // --- 1. كارت المنتج ---
@@ -26,7 +26,7 @@ const ProductCard = ({ item, onViewImage, onChat, onAddToCart, isOwner, onDelete
           </div>
         )}
         {isOwner && (
-            <button onClick={() => onDelete(item.id)} className="absolute top-4 left-4 bg-white/90 text-red-600 w-10 h-10 rounded-full flex items-center justify-center shadow-md font-bold z-10 hover:scale-110 active:scale-90 transition-all">🗑️</button>
+            <button onClick={() => onDelete(item.id)} className="absolute top-4 left-4 bg-white/90 text-red-600 w-10 h-10 rounded-full flex items-center justify-center shadow-md font-bold z-10">🗑️</button>
         )}
       </div>
       <div className="p-6 text-right">
@@ -56,13 +56,13 @@ const ProductCard = ({ item, onViewImage, onChat, onAddToCart, isOwner, onDelete
 
 // --- 2. المكون الرئيسي ---
 export default function Dashboard({ user }) {
-  // ⚠️⚠️⚠️ اكتب ايميلك هنا عشان زرار الحظر يظهرلك ⚠️⚠️⚠️
+  // ⚠️⚠️⚠️ غير الإيميل ده لإيميلك الحقيقي عشان تكون أنت الأدمن ⚠️⚠️⚠️
   const ADMIN_EMAIL = "admin@gmail.com"; 
 
   const [activeTab, setActiveTab] = useState('home'); 
   const [searchTerm, setSearchTerm] = useState('');
   const [toast, setToast] = useState({ show: false, msg: '' });
-  const [isBanned, setIsBanned] = useState(false); // حالة الحظر
+  const [isBanned, setIsBanned] = useState(false);
 
   const [products, setProducts] = useState([]);
   const [myMessages, setMyMessages] = useState([]);
@@ -78,7 +78,8 @@ export default function Dashboard({ user }) {
   const [uploading, setUploading] = useState(false);
   const [msgText, setMsgText] = useState('');
 
-  const isAdmin = user?.email === ADMIN_EMAIL;
+  // هل المستخدم الحالي هو الأدمن؟
+  const isAdmin = user?.email?.toLowerCase() === ADMIN_EMAIL.toLowerCase();
 
   const categories = [
     { id: 'parts', name: 'قطع غيار', img: '/parts.jpg' },
@@ -96,43 +97,36 @@ export default function Dashboard({ user }) {
   useEffect(() => {
     if(!user || !user.uid) return;
 
-    // 1. مراقب الحظر (ده اللي بيجيب الشاشة السوداء)
+    // فحص الحظر
     try {
-        onValue(ref(db, `users/${user.uid}/banned`), (snap) => {
-            setIsBanned(snap.val() === true);
-        });
-    } catch(e) { console.error(e); }
+        onValue(ref(db, `users/${user.uid}/banned`), (snap) => setIsBanned(snap.val() === true));
+    } catch(e) {}
 
-    // 2. جلب البيانات
+    // جلب الطلبات
     try {
         onValue(ref(db, 'orders'), (snap) => {
             const data = snap.val();
             setOrders(data ? Object.entries(data).map(([id, val]) => ({ id, ...val })) : []);
         });
+    } catch(e) {}
 
-        // لو أدمن هات كل الرسايل، لو يوزر هات رسايله بس
+    // جلب الرسائل (إصلاح مشكلة الأدمن)
+    try {
         const messagesPath = isAdmin ? 'messages/Admin' : `messages/${user.uid}`;
         onValue(ref(db, messagesPath), (snap) => {
             const data = snap.val();
-            if (data) {
-                if(isAdmin) {
-                    // تجميع رسائل الدعم للأدمن
-                    setMyMessages(Object.values(data));
-                } else {
-                    setMyMessages(Object.entries(data).map(([id, val]) => ({ id, ...val })));
-                }
-            } else {
-                setMyMessages([]);
-            }
+            // لو أدمن أو يوزر عادي، بنحول الداتا لمصفوفة بنفس الطريقة
+            setMyMessages(data ? Object.entries(data).map(([id, val]) => ({ id, ...val })) : []);
         });
-    } catch(e) { console.error(e); }
+    } catch(e) { console.error("Message Error:", e); }
 
+    // جلب المنتجات
     try {
         onValue(ref(db, 'products'), (snap) => {
             const data = snap.val();
             setProducts(data ? Object.entries(data).map(([id, val]) => ({ id, ...val })).reverse() : []);
         });
-    } catch(e) { console.error(e); }
+    } catch(e) {}
 
   }, [user, isAdmin]);
 
@@ -147,8 +141,14 @@ export default function Dashboard({ user }) {
     return (p.name?.toLowerCase().includes(s) || p.category?.toLowerCase().includes(s)) && (p.name || p.category);
   });
 
+  // منطق الفلترة المصلح لظهور الرسائل
   const uniqueConversations = myMessages.length > 0 
-    ? [...new Map(myMessages.filter(m => m).map(m => [m.fromId === user.uid ? m.toId : m.fromId, m])).values()]
+    ? [...new Map(myMessages.filter(m => m).map(m => {
+        // لو أنا الأدمن، الطرف التاني هو "الراسل" (fromId)
+        // لو أنا يوزر، الطرف التاني هو اللي بكلمه (toId) أو اللي بعتلي (fromId)
+        const otherId = isAdmin ? m.fromId : (m.fromId === user.uid ? m.toId : m.fromId);
+        return [otherId, m]; // استخدمنا الـ ID كـ مفتاح عشان نمنع التكرار
+      })).values()]
     : [];
 
   const safeTime = (d) => {
@@ -156,40 +156,53 @@ export default function Dashboard({ user }) {
       catch { return ""; }
   };
 
+  // إرسال رسالة (يدعم رد الأدمن)
   const handleSendMessage = () => {
       if(!msgText.trim()) return;
-      const d = { fromName: user.displayName, fromId: user.uid, text: msgText, date: new Date().toISOString() };
       
-      if(isAdmin) {
-          // الأدمن بيرد على اليوزر
-          push(ref(db, `messages/${messageModal.receiverId}`), { ...d, fromName: 'الدعم الفني 🛡️' });
+      const msgData = { 
+          fromName: user.displayName, 
+          fromId: user.uid, 
+          text: msgText, 
+          date: new Date().toISOString() 
+      };
+
+      if (isAdmin) {
+          // الأدمن بيرد -> الرسالة تروح لليوزر وتتحفظ عند الأدمن
+          push(ref(db, `messages/${messageModal.receiverId}`), { ...msgData, fromName: 'الدعم الفني 🛡️' });
+          push(ref(db, `messages/Admin`), { ...msgData, toId: messageModal.receiverId, fromName: 'أنا (الدعم)' }); 
       } else {
           // اليوزر بيبعت
-          push(ref(db, `messages/${messageModal.receiverId}`), d);
-          push(ref(db, `messages/${user.uid}`), { ...d, toId: messageModal.receiverId });
+          push(ref(db, `messages/${messageModal.receiverId}`), msgData);
+          push(ref(db, `messages/${user.uid}`), { ...msgData, toId: messageModal.receiverId });
       }
       setMsgText('');
   };
 
-  // وظيفة الحظر (للأدمن فقط)
-  const toggleBanUser = (targetId, currentStatus) => {
-      if(!isAdmin) return;
-      // نكتب في الداتابيز إن اليوزر ده محظور
-      set(ref(db, `users/${targetId}/banned`), !currentStatus).then(() => {
-          showToast(!currentStatus ? "تم حظر المستخدم 🚫" : "تم فك الحظر ✅");
-      });
+  // إرسال للدعم الفني (إصلاح: إضافة toId)
+  const sendSupportMessage = () => {
+      if(!supportMsg) return;
+      // بنبعت لـ messages/Admin عشان الأدمن يشوفها
+      const msg = { 
+          fromName: user.displayName, 
+          fromId: user.uid, 
+          text: supportMsg, 
+          date: new Date().toISOString(),
+          toId: 'Admin' // مهم جداً عشان الفلترة
+      };
+      push(ref(db, 'messages/Admin'), msg);
+      push(ref(db, `messages/${user.uid}`), { ...msg, fromName: 'أنا -> الدعم' }); // نسخة عندي
+      setSupportMsg('');
+      showToast("✅ تم إرسال رسالتك للدعم");
   };
 
-  // --- شاشة الحظر (Black Screen) ---
-  if (isBanned) return (
-      <div className="fixed inset-0 bg-black z-[9999] flex flex-col items-center justify-center p-6 text-center animate-fadeIn">
-          <h1 className="text-red-600 text-6xl mb-4">🚫</h1>
-          <h2 className="text-white text-3xl font-black mb-2">تم حظر حسابك</h2>
-          <p className="text-zinc-400 font-bold text-sm mb-8">لقد قمت بمخالفة شروط استخدام "الورشة".</p>
-          <a href="mailto:admin@gmail.com" className="bg-white text-black px-8 py-3 rounded-full font-black hover:bg-yellow-400 transition-colors">تواصل مع الدعم</a>
-      </div>
-  );
+  // حظر المستخدم
+  const banUser = (uid) => {
+      if(!isAdmin) return;
+      set(ref(db, `users/${uid}/banned`), true).then(() => showToast("🚫 تم حظر المستخدم"));
+  };
 
+  if (isBanned) return <div className="h-screen bg-black text-red-500 flex flex-col items-center justify-center font-black text-2xl">🚫 تم حظر حسابك<span className="text-white text-sm mt-4">تواصل مع الإدارة: {ADMIN_EMAIL}</span></div>;
   if (!user) return <div className="h-screen flex items-center justify-center font-bold">يرجى تسجيل الدخول...</div>;
 
   return (
@@ -216,6 +229,7 @@ export default function Dashboard({ user }) {
       <main className="container mx-auto p-4">
         {activeTab === 'home' && (
           <>
+            {isAdmin && <div className="bg-yellow-100 text-yellow-800 p-2 text-center rounded-lg mb-4 font-bold text-xs">🛡️ وضع الأدمن مفعل - أهلاً يا مدير</div>}
             <div className="mb-6">
                 <input className="w-full bg-white p-4 rounded-2xl text-center font-bold shadow-sm outline-none" placeholder="بحث..." onChange={(e) => setSearchTerm(e.target.value)} />
             </div>
@@ -238,13 +252,13 @@ export default function Dashboard({ user }) {
 
         {activeTab === 'inbox' && (
             <div className="space-y-4">
-                <h2 className="text-2xl font-black mb-4 px-2">{isAdmin ? 'لوحة تحكم الأدمن 🛡️' : 'الرسائل'}</h2>
+                <h2 className="text-2xl font-black mb-4 px-2">{isAdmin ? 'صندوق الوارد (أدمن)' : 'الرسائل'}</h2>
                 {uniqueConversations.length === 0 && <p className="text-center text-zinc-400 py-10">مفيش رسايل</p>}
                 {uniqueConversations.map((chat, idx) => (
-                    <div key={idx} className="bg-white p-4 rounded-2xl flex items-center gap-4 shadow-sm border border-zinc-100" onClick={() => setMessageModal({ show: true, receiverId: chat.fromId, receiverName: chat.fromName })}>
+                    <div key={idx} className="bg-white p-4 rounded-2xl flex items-center gap-4 shadow-sm border border-zinc-100 cursor-pointer" onClick={() => setMessageModal({ show: true, receiverId: isAdmin ? chat.fromId : (chat.fromId === user.uid ? chat.toId : chat.fromId), receiverName: chat.fromName })}>
                         <div className="w-12 h-12 bg-zinc-100 rounded-full flex items-center justify-center font-bold text-lg">{chat.fromName?.[0]}</div>
                         <div className="flex-1">
-                            <h4 className="font-bold text-sm">{chat.fromName} {isAdmin && <span className="text-[10px] bg-yellow-100 px-2 rounded-full text-yellow-600">عميل</span>}</h4>
+                            <h4 className="font-bold text-sm">{chat.fromName} {isAdmin && <span className="text-[10px] bg-red-100 text-red-600 px-2 rounded ml-2">طلب دعم</span>}</h4>
                             <p className="text-xs text-zinc-400 truncate">{chat.text}</p>
                         </div>
                     </div>
@@ -264,7 +278,6 @@ export default function Dashboard({ user }) {
                                 <span className="text-[10px] bg-white/10 px-2 py-1 rounded">{order.status === 'delivered' ? 'مباع ✅' : 'جاري'}</span>
                             </div>
                             <p className="text-xs text-zinc-300">العنوان: {order.buyerLocation}</p>
-                            
                             {order.status === 'pending' ? (
                                 <div className="flex gap-2">
                                     <input type="number" placeholder="سعر الشحن..." className="flex-1 bg-zinc-800 p-3 rounded-xl text-xs text-white" onChange={(e) => setDeliveryFees({...deliveryFees, [order.id]: e.target.value})} />
@@ -283,7 +296,7 @@ export default function Dashboard({ user }) {
             <div className="text-center pt-10 px-4">
                 <h2 className="text-2xl font-black mb-4">الدعم الفني 🎧</h2>
                 <textarea className="w-full bg-white p-4 rounded-2xl border shadow-sm h-40 outline-none" placeholder="اكتب مشكلتك..." value={supportMsg} onChange={(e) => setSupportMsg(e.target.value)} />
-                <button onClick={() => { if(supportMsg) { push(ref(db, 'messages/Admin'), { fromName: user.displayName, fromId: user.uid, text: supportMsg, date: new Date().toISOString() }); setSupportMsg(''); showToast("تم الإرسال"); } }} className="w-full bg-black text-white py-4 rounded-2xl font-bold mt-4">إرسال</button>
+                <button onClick={sendSupportMessage} className="w-full bg-black text-white py-4 rounded-2xl font-bold mt-4">إرسال</button>
             </div>
         )}
 
@@ -299,12 +312,8 @@ export default function Dashboard({ user }) {
         )}
       </main>
 
-      {/* Floating Add Button */}
-      {activeTab === 'home' && (
-        <button onClick={() => setShowModal(true)} className="fixed bottom-6 left-6 w-14 h-14 bg-black text-yellow-400 rounded-2xl shadow-xl text-3xl font-black z-40 border-2 border-white flex items-center justify-center">+</button>
-      )}
-
-      {/* Post Modal */}
+      {/* Post & Address Modals (Same as before) ... */}
+      {/* ... (نفس أكواد المودالز السابقة هنا بدون تغيير) ... */}
       {showModal && (
         <div className="fixed inset-0 bg-black/80 z-[100] flex items-center justify-center p-6">
           <div className="bg-white w-full max-w-md p-6 rounded-3xl shadow-2xl relative">
@@ -329,7 +338,6 @@ export default function Dashboard({ user }) {
         </div>
       )}
 
-      {/* Address Modal */}
       {addressModal.show && (
         <div className="fixed inset-0 bg-black/80 z-[100] flex items-center justify-center p-6">
             <div className="bg-white w-full max-w-md p-6 rounded-3xl">
@@ -341,25 +349,19 @@ export default function Dashboard({ user }) {
         </div>
       )}
 
-      {/* Chat Modal (مع زر الحظر للأدمن) */}
+      {/* Chat Modal with Admin Ban Button */}
       {messageModal.show && (
         <div className="fixed inset-0 bg-black/80 z-[100] flex flex-col items-center justify-center p-4">
             <div className="bg-white w-full max-w-md h-[80vh] rounded-3xl flex flex-col overflow-hidden relative">
                 <div className="p-4 border-b flex justify-between items-center bg-zinc-50">
-                    <div className="flex items-center gap-2">
+                    <div className="flex flex-col">
                         <span className="font-black">{messageModal.receiverName}</span>
-                        {/* 🛑 زرار الحظر (يظهر للأدمن فقط) */}
-                        {isAdmin && (
-                            <button onClick={() => toggleBanUser(messageModal.receiverId, false)} className="bg-red-100 text-red-600 px-3 py-1 rounded-full text-[10px] font-bold hover:bg-red-600 hover:text-white transition-colors">
-                                🚫 حظر المستخدم
-                            </button>
-                        )}
+                        {isAdmin && <button onClick={() => banUser(messageModal.receiverId)} className="text-[10px] text-red-500 font-bold border border-red-200 px-2 rounded bg-red-50 mt-1">🚫 حظر المستخدم</button>}
                     </div>
                     <button onClick={() => setMessageModal({ show: false, receiverId: '', receiverName: '' })}>✕</button>
                 </div>
                 <div className="flex-1 overflow-y-auto p-4 space-y-2">
-                    {/* هنا خليت الرسايل تترتب صح حسب التاريخ */}
-                    {(myMessages || []).filter(m => m && (m.fromId === messageModal.receiverId || m.toId === messageModal.receiverId)).sort((a,b) => new Date(a.date || 0) - new Date(b.date || 0)).map((msg, i) => (
+                    {myMessages.filter(m => (m.fromId === messageModal.receiverId || m.toId === messageModal.receiverId)).sort((a,b) => new Date(a.date || 0) - new Date(b.date || 0)).map((msg, i) => (
                         <div key={i} className={`flex ${msg.fromId === user.uid ? 'justify-end' : 'justify-start'}`}>
                             <div className={`p-3 rounded-xl max-w-[80%] text-sm font-bold ${msg.fromId === user.uid ? 'bg-black text-white' : 'bg-zinc-100'}`}>
                                 {msg.text}
