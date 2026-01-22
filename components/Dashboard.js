@@ -75,10 +75,10 @@ export default function Dashboard({ user }) {
   const touchStartPos = useRef(0);
   const longPressTimer = useRef(null);
 
-  // القائمة المحدثة بالقسم الجديد
+  // القائمة المحدثة بالأسماء اللي اتفقنا عليها
   const categories = [
     { id: 'parts', name: 'قطع غيار', img: '/parts.jpg' },
-    { id: 'heater', name: 'سخانات', img: '/heater(1).jpg' },
+    { id: 'heater', name: 'سخانات', img: '/heater (1).jpg' }, // تعديل اسم الصورة هنا
     { id: 'ac', name: 'تكييفات', img: '/ac.jpg.webp' },
     { id: 'wash', name: 'غسالات', img: '/washing.jpg' },
     { id: 'fridge', name: 'ثلاجات', img: '/fridge.jpg' },
@@ -86,7 +86,7 @@ export default function Dashboard({ user }) {
     { id: 'fan', name: 'مراوح', img: '/fan.jpg' },
     { id: 'blender', name: 'خلاطات', img: '/blender.jpg' },
     { id: 'caps', name: 'كابات', img: '/caps.jpg' },
-    { id: 'tools', name: 'عدة تصليح', img: '/tools.jpg' } // القسم الجديد هنا
+    { id: 'tools', name: 'عدة تصليح', img: '/tools.jpg' } // قسم عدة التصليح
   ];
 
   // Effects
@@ -386,7 +386,7 @@ export default function Dashboard({ user }) {
         )}
       </main>
 
-      {optionsModal.show && (<div className="fixed inset-0 bg-black/50 z-[200] flex items-center justify-center p-4 backdrop-blur-sm" onClick={() => setOptionsModal({ ...optionsModal, show: false })}><div className="bg-white w-full max-w-sm p-6 rounded-[2rem] shadow-2xl animate-slideUp text-center space-y-4" onClick={(e) => e.stopPropagation()}><h3 className="font-black text-lg mb-4">خيارات ⚙️</h3><button onClick={handlePin} className="w-full bg-yellow-100 text-yellow-700 py-4 rounded-xl font-bold flex items-center justify-center gap-2 hover:bg-yellow-200">{pinnedChats.includes(optionsModal.targetId) ? '❌ إلغاء التثبيت' : '📌 تثبيت'}</button><button onClick={handleReport} className="w-full bg-red-50 text-red-600 py-4 rounded-xl font-bold flex items-center justify-center gap-2 hover:bg-red-100">🚨 إبلاغ</button><button onClick={() => setOptionsModal({ ...optionsModal, show: false })} className="w-full text-zinc-400 text-xs font-bold pt-2">إلغاء</button></div></div>)}
+      {optionsModal.show && (<div className="fixed inset-0 bg-black/50 z-[200] flex items-center justify-center p-4 backdrop-blur-sm" onClick={() => setOptionsModal({ ...optionsModal, show: false })}><div className="bg-white w-full max-sm p-6 rounded-[2rem] shadow-2xl animate-slideUp text-center space-y-4" onClick={(e) => e.stopPropagation()}><h3 className="font-black text-lg mb-4">خيارات ⚙️</h3><button onClick={handlePin} className="w-full bg-yellow-100 text-yellow-700 py-4 rounded-xl font-bold flex items-center justify-center gap-2 hover:bg-yellow-200">{pinnedChats.includes(optionsModal.targetId) ? '❌ إلغاء التثبيت' : '📌 تثبيت'}</button><button onClick={handleReport} className="w-full bg-red-50 text-red-600 py-4 rounded-xl font-bold flex items-center justify-center gap-2 hover:bg-red-100">🚨 إبلاغ</button><button onClick={() => setOptionsModal({ ...optionsModal, show: false })} className="w-full text-zinc-400 text-xs font-bold pt-2">إلغاء</button></div></div>)}
       {!['inbox', 'profile', 'support'].includes(activeTab) && <button onClick={() => setShowModal(true)} className="fixed bottom-10 left-10 w-20 h-20 bg-yellow-400 text-black rounded-full shadow-[0_10px_40px_rgba(255,215,0,0.4)] text-4xl font-black z-[100] border-4 border-white hover:scale-110 active:scale-90 transition-all flex items-center justify-center shadow-lg shadow-yellow-400/20">+</button>}
       
       {showModal && (
