@@ -3,7 +3,7 @@ import { db, auth } from '../firebaseConfig';
 import { ref, onValue, push, remove, update } from "firebase/database";
 import { signOut } from "firebase/auth";
 
-// --- 1. كارت المنتج (المحمي) ---
+// --- 1. كارت المنتج (ProductCard) ---
 const ProductCard = ({ item, onViewImage, onChat, onAddToCart, isOwner, onDelete }) => {
   if (!item) return null;
   const isSold = item.status === 'sold';
@@ -12,7 +12,7 @@ const ProductCard = ({ item, onViewImage, onChat, onAddToCart, isOwner, onDelete
     <div className={`bg-white rounded-[2rem] border border-zinc-100 overflow-hidden shadow-sm hover:shadow-xl transition-all group relative ${isSold ? 'opacity-60 grayscale' : ''}`}>
       <div className="h-64 overflow-hidden relative bg-zinc-50">
         <img 
-          src={item.image || 'https://via.placeholder.com/300?text=No+Image'} 
+          src={item.image || 'https://via.placeholder.com/300'} 
           className="w-full h-full object-cover cursor-pointer group-hover:scale-105 transition-transform duration-700" 
           onClick={() => onViewImage(item.image)} 
           alt={item.name || 'Product'}
@@ -30,7 +30,7 @@ const ProductCard = ({ item, onViewImage, onChat, onAddToCart, isOwner, onDelete
         )}
       </div>
       <div className="p-6 text-right">
-        <h3 className="font-black text-zinc-900 text-base mb-1 line-clamp-1">{item.name || 'منتج بدون اسم'}</h3>
+        <h3 className="font-black text-zinc-900 text-base mb-1 line-clamp-1">{item.name || 'بدون اسم'}</h3>
         <p className="text-[10px] text-zinc-400 font-bold mb-4">الحالة: {item.condition === 'new' ? 'جديد ✨' : 'مستعمل 🛠️'}</p>
         
         <div className="flex items-center justify-between mb-4 bg-zinc-50 p-3 rounded-2xl">
@@ -58,24 +58,27 @@ const ProductCard = ({ item, onViewImage, onChat, onAddToCart, isOwner, onDelete
   );
 };
 
-// --- 2. المكون الرئيسي ---
+// --- 2. المكون الرئيسي (Dashboard) ---
 export default function Dashboard({ user }) {
+  // States
   const [showSplash, setShowSplash] = useState(true);
   const [activeTab, setActiveTab] = useState('home'); 
   const [searchTerm, setSearchTerm] = useState('');
   const [toast, setToast] = useState({ show: false, msg: '' });
 
-  // Data States initialized with empty arrays
+  // Data
   const [products, setProducts] = useState([]);
   const [myMessages, setMyMessages] = useState([]);
   const [orders, setOrders] = useState([]);
   const [supportMsg, setSupportMsg] = useState('');
   
-  // UI States
+  // UI
   const [showModal, setShowModal] = useState(false);
   const [addressModal, setAddressModal] = useState({ show: false, product: null, location: '' });
   const [viewImage, setViewImage] = useState(null);
   const [messageModal, setMessageModal] = useState({ show: false, receiverId: '', receiverName: '' });
+  
+  // Inputs
   const [newProduct, setNewProduct] = useState({ name: '', price: '', desc: '', condition: 'new', image: null, phone: '', category: 'قطع غيار' });
   const [deliveryFees, setDeliveryFees] = useState({});
   const [uploading, setUploading] = useState(false);
@@ -97,38 +100,23 @@ export default function Dashboard({ user }) {
   useEffect(() => {
     const timer = setTimeout(() => setShowSplash(false), 3500);
     
-    // Safety Wrapper for Data Fetching
-    const fetchData = () => {
-        if(user?.uid) {
-            onValue(ref(db, 'orders'), (snap) => {
-                const data = snap.val();
-                // الحماية هنا: لو الداتا null رجع مصفوفة فاضية
-                if (data) {
-                    setOrders(Object.entries(data).map(([id, val]) => ({ id, ...val })));
-                } else {
-                    setOrders([]);
-                }
-            });
-            onValue(ref(db, `messages/${user.uid}`), (snap) => {
-                const data = snap.val();
-                if (data) {
-                    setMyMessages(Object.entries(data).map(([id, val]) => ({ id, ...val })));
-                } else {
-                    setMyMessages([]);
-                }
-            });
-        }
-        onValue(ref(db, 'products'), (snap) => {
+    // جلب البيانات بشكل آمن
+    if(user?.uid) {
+        onValue(ref(db, 'orders'), (snap) => {
             const data = snap.val();
-            if (data) {
-                setProducts(Object.entries(data).map(([id, val]) => ({ id, ...val })).reverse());
-            } else {
-                setProducts([]);
-            }
+            setOrders(data ? Object.entries(data).map(([id, val]) => ({ id, ...val })) : []);
         });
-    };
+        onValue(ref(db, `messages/${user.uid}`), (snap) => {
+            const data = snap.val();
+            setMyMessages(data ? Object.entries(data).map(([id, val]) => ({ id, ...val })) : []);
+        });
+    }
+    
+    onValue(ref(db, 'products'), (snap) => {
+        const data = snap.val();
+        setProducts(data ? Object.entries(data).map(([id, val]) => ({ id, ...val })).reverse() : []);
+    });
 
-    fetchData();
     return () => clearTimeout(timer);
   }, [user]);
 
@@ -144,7 +132,7 @@ export default function Dashboard({ user }) {
     return normalize(p.name).includes(search) || normalize(p.category).includes(search);
   });
 
-  const uniqueConversations = myMessages.length > 0 
+  const uniqueConversations = myMessages 
     ? [...new Map(myMessages.filter(m => m && m.fromId !== 'Admin' && m.toId !== 'Admin').map(m => [m.fromId === user.uid ? m.toId : m.fromId, m])).values()]
     : [];
 
@@ -157,20 +145,26 @@ export default function Dashboard({ user }) {
       }
   };
 
-  // Loading Screen Safety
-  if (!user) return <div className="min-h-screen flex items-center justify-center bg-zinc-900 text-yellow-400 font-black animate-pulse">جاري التحميل...</div>;
+  // شاشة تحميل لو البيانات لسه ما وصلتش (تمنع الكراش)
+  if (!user) return (
+    <div className="min-h-screen flex items-center justify-center bg-zinc-950">
+        <div className="text-yellow-400 font-black text-xl animate-pulse">جاري التحميل...</div>
+    </div>
+  );
 
   return (
     <div className="min-h-screen bg-[#F8F8F8] pb-24 font-cairo select-none overflow-x-hidden" dir="rtl">
+      {/* Toast Notification */}
       {toast.show && <div className="fixed top-20 left-1/2 -translate-x-1/2 z-[9999] bg-yellow-400 text-black px-8 py-4 rounded-2xl font-black shadow-2xl border-4 border-white animate-bounce">{toast.msg}</div>}
 
+      {/* Splash Screen */}
       {showSplash && (
         <div className="fixed inset-0 bg-zinc-950 z-[999] flex flex-col items-center justify-center">
            <div className="w-28 h-28 bg-yellow-400 rounded-full flex items-center justify-center border-4 border-white animate-bounce shadow-[0_0_50px_rgba(250,204,21,0.5)]"><span className="text-black text-6xl font-black italic">W</span></div>
            <h1 className="text-white font-black text-4xl mt-8 italic tracking-tighter">AL-WARSHA</h1>
            <div className="mt-8 text-center animate-pulse">
               <p className="text-zinc-500 text-sm font-bold tracking-[0.3em] uppercase">Welcome Back</p>
-              <p className="text-yellow-400 text-xl font-black mt-2">{user.displayName || 'User'}</p>
+              <p className="text-yellow-400 text-xl font-black mt-2">{user?.displayName || 'User'}</p>
            </div>
         </div>
       )}
@@ -188,12 +182,13 @@ export default function Dashboard({ user }) {
              <button onClick={() => setActiveTab('inbox')} className={`p-3 rounded-2xl relative transition-all ${activeTab === 'inbox' ? 'bg-yellow-400 text-black shadow-lg shadow-yellow-400/30' : 'bg-zinc-100 text-zinc-400'}`}>
                 📩 {uniqueConversations.length > 0 && <span className="absolute -top-1 -right-1 bg-red-500 text-white text-[9px] w-4 h-4 rounded-full flex items-center justify-center border-2 border-white animate-pulse">!</span>}
              </button>
-             <button onClick={() => setActiveTab('profile')} className="w-11 h-11 rounded-2xl border-2 border-white shadow-md overflow-hidden active:scale-90 transition-transform"><img src={user.photoURL || 'https://via.placeholder.com/150'} className="w-full h-full object-cover" /></button>
+             <button onClick={() => setActiveTab('profile')} className="w-11 h-11 rounded-2xl border-2 border-white shadow-md overflow-hidden active:scale-90 transition-transform"><img src={user.photoURL || 'https://via.placeholder.com/150'} className="w-full h-full object-cover" alt="Profile" /></button>
           </div>
         </div>
       </header>
 
       <main className="container mx-auto p-4 md:p-8">
+        {/* الصفحة الرئيسية */}
         {activeTab === 'home' && (
           <>
             <div className="relative mb-8">
@@ -219,7 +214,7 @@ export default function Dashboard({ user }) {
           </>
         )}
 
-        {/* البريد (Safe) */}
+        {/* البريد (Inbox) */}
         {activeTab === 'inbox' && (
             <div className="max-w-2xl mx-auto space-y-4 animate-fadeIn">
                 <h2 className="text-3xl font-black mb-8 text-right px-4">الرسائل <span className="text-yellow-400">.</span></h2>
@@ -230,7 +225,7 @@ export default function Dashboard({ user }) {
                             <div className="w-16 h-16 rounded-full bg-zinc-100 text-zinc-900 flex items-center justify-center font-black text-2xl shadow-inner">{chat.fromName ? chat.fromName[0] : '?'}</div>
                             <div className="flex-1 text-right">
                                 <h4 className="font-black text-zinc-900 text-lg">{chat.fromName}</h4>
-                                <p className="text-xs text-zinc-400 font-bold mt-1 line-clamp-1">{chat.text || "رسالة صوتية/صورة"}</p>
+                                <p className="text-xs text-zinc-400 font-bold mt-1 line-clamp-1">{chat.text || "رسالة"}</p>
                             </div>
                             <span className="text-2xl text-zinc-200 group-hover:text-yellow-400 transition-colors">💬</span>
                         </div>
@@ -240,13 +235,14 @@ export default function Dashboard({ user }) {
             </div>
         )}
 
-        {/* العربة (Safe) */}
+        {/* العربة (Cart) */}
         {activeTab === 'cart' && (
             <div className="max-w-2xl mx-auto space-y-10 animate-fadeIn">
                 <h2 className="text-3xl font-black text-right px-4">متابعة الطلبات <span className="text-yellow-400">.</span></h2>
                 
+                {/* قسم البائع */}
                 <div className="space-y-4">
-                    <h3 className="font-black text-zinc-400 text-xs px-4 uppercase tracking-widest">طلبات واردة</h3>
+                    <h3 className="font-black text-zinc-400 text-xs px-4 uppercase tracking-widest">طلبات واردة (ناس عايزة تشتري مني)</h3>
                     {orders.filter(o => o.sellerId === user.uid).length === 0 && <p className="text-center text-zinc-300 text-xs font-bold py-4">مفيش طلبات جديدة</p>}
                     {orders.filter(o => o.sellerId === user.uid).reverse().map(order => (
                         <div key={order.id} className="bg-zinc-900 text-white p-6 rounded-[2.5rem] shadow-2xl space-y-6 relative overflow-hidden">
@@ -280,6 +276,7 @@ export default function Dashboard({ user }) {
                     ))}
                 </div>
 
+                {/* قسم المشتري */}
                 <div className="space-y-4">
                     <h3 className="font-black text-zinc-400 text-xs px-4 uppercase tracking-widest">مشترياتي</h3>
                     {orders.filter(o => o.buyerId === user.uid).reverse().map(order => (
@@ -330,9 +327,9 @@ export default function Dashboard({ user }) {
         )}
       </main>
 
-      {/* Address Modal */}
+      {/* Address Modal (Fixed) */}
       {addressModal.show && (
-        <div className="fixed inset-0 bg-black/60 z-[200] flex items-end md:items-center justify-center p-4 backdrop-blur-sm">
+        <div className="fixed inset-0 bg-black/60 z-[200] flex items-center justify-center p-4 backdrop-blur-sm">
             <div className="bg-white w-full max-w-md p-8 rounded-[3rem] shadow-2xl animate-slideUp">
                 <h2 className="text-2xl font-black text-center mb-2">عنوان التوصيل 🚚</h2>
                 <div className="bg-zinc-50 p-2 rounded-3xl border border-zinc-200 mb-4">
@@ -350,13 +347,12 @@ export default function Dashboard({ user }) {
         </div>
       )}
 
-      {/* Post Modal (FANCY) */}
+      {/* Post Modal (Fixed) */}
       {showModal && (
         <div className="fixed inset-0 bg-zinc-900/90 z-[120] flex items-center justify-center p-4 backdrop-blur-md">
           <div className="bg-white w-full max-w-lg p-8 rounded-[3rem] shadow-2xl overflow-y-auto max-h-[90vh] animate-slideUp relative">
             <button onClick={() => setShowModal(false)} className="absolute top-8 left-8 w-10 h-10 bg-zinc-100 rounded-full flex items-center justify-center text-zinc-400 font-black hover:bg-red-50 hover:text-red-500 transition-colors">✕</button>
             <h2 className="text-2xl font-black text-center mb-8 mt-2">بيع جهازك 🚀</h2>
-            
             <form className="space-y-5" onSubmit={(e) => {
                 e.preventDefault();
                 setUploading(true);
@@ -372,34 +368,27 @@ export default function Dashboard({ user }) {
                     </div>
                  )}
               </div>
-
               <div className="space-y-3">
-                  <input placeholder="اسم الجهاز (مثال: تكييف شارب 1.5 حصان)" className="w-full bg-zinc-100 p-5 rounded-[1.5rem] outline-none font-bold text-zinc-900 focus:bg-white focus:ring-2 focus:ring-yellow-400 transition-all" onChange={e => setNewProduct({...newProduct, name: e.target.value})} />
-                  <select className="w-full bg-zinc-100 p-5 rounded-[1.5rem] font-bold text-zinc-500 outline-none appearance-none" onChange={e => setNewProduct({...newProduct, category: e.target.value})}>
+                  <input placeholder="اسم الجهاز" className="w-full bg-zinc-100 p-5 rounded-[1.5rem] outline-none font-bold text-zinc-900" onChange={e => setNewProduct({...newProduct, name: e.target.value})} />
+                  <select className="w-full bg-zinc-100 p-5 rounded-[1.5rem] font-bold text-zinc-500 outline-none" onChange={e => setNewProduct({...newProduct, category: e.target.value})}>
                       {categories.map(cat => <option key={cat.id} value={cat.name}>{cat.name}</option>)}
                   </select>
                   <div className="flex gap-3">
-                    <input type="number" placeholder="السعر (جنية)" className="flex-1 bg-zinc-100 p-5 rounded-[1.5rem] outline-none font-bold text-zinc-900" onChange={e => setNewProduct({...newProduct, price: e.target.value})} />
+                    <input type="number" placeholder="السعر" className="flex-1 bg-zinc-100 p-5 rounded-[1.5rem] outline-none font-bold text-zinc-900" onChange={e => setNewProduct({...newProduct, price: e.target.value})} />
                     <select className="bg-zinc-100 p-5 rounded-[1.5rem] font-bold text-zinc-500 outline-none" onChange={e => setNewProduct({...newProduct, condition: e.target.value})}>
                         <option value="new">✨ جديد</option>
                         <option value="used">🛠️ مستعمل</option>
                     </select>
                   </div>
-                  <input type="tel" placeholder="رقم الموبايل للتواصل" className="w-full bg-zinc-100 p-5 rounded-[1.5rem] outline-none font-bold text-zinc-900" onChange={e => setNewProduct({...newProduct, phone: e.target.value})} />
+                  <input type="tel" placeholder="رقم الموبايل" className="w-full bg-zinc-100 p-5 rounded-[1.5rem] outline-none font-bold text-zinc-900" onChange={e => setNewProduct({...newProduct, phone: e.target.value})} />
               </div>
-
-              <button type="submit" disabled={uploading} className="w-full bg-zinc-900 text-white py-5 rounded-[2rem] font-black text-lg shadow-xl hover:bg-yellow-400 hover:text-black transition-all transform active:scale-95">{uploading ? 'جاري الرفع...' : 'نشر الإعلان الآن ✅'}</button>
+              <button type="submit" disabled={uploading} className="w-full bg-zinc-900 text-white py-5 rounded-[2rem] font-black text-lg shadow-xl hover:bg-yellow-400 hover:text-black transition-all">{uploading ? 'جاري الرفع...' : 'نشر الإعلان الآن ✅'}</button>
             </form>
           </div>
         </div>
       )}
 
-      {/* Floating Button */}
-      {activeTab === 'home' && (
-        <button onClick={() => setShowModal(true)} className="fixed bottom-8 left-8 w-16 h-16 bg-zinc-900 text-yellow-400 rounded-[2rem] shadow-2xl text-3xl font-black z-40 flex items-center justify-center hover:scale-110 active:scale-90 transition-all border-4 border-white">+</button>
-      )}
-
-      {/* Message Modal (Safe) */}
+      {/* Chat Modal */}
       {messageModal.show && (
         <div className="fixed inset-0 bg-black/80 z-[150] flex flex-col md:justify-center md:items-center">
             <div className="bg-white w-full md:max-w-md h-full md:h-[80vh] md:rounded-[3rem] flex flex-col overflow-hidden shadow-2xl animate-slideUp">
@@ -410,9 +399,8 @@ export default function Dashboard({ user }) {
                    </div>
                    <button onClick={() => setMessageModal({ show: false, receiverId: '', receiverName: '' })} className="w-10 h-10 bg-white rounded-full flex items-center justify-center text-zinc-400 hover:text-red-500 shadow-sm transition-colors">✕</button>
                 </div>
-                
                 <div className="flex-1 overflow-y-auto p-4 space-y-3 bg-white">
-                   {myMessages.filter(m => m.fromId === messageModal.receiverId || m.toId === messageModal.receiverId).sort((a,b) => (new Date(a.date || Date.now())) - (new Date(b.date || Date.now()))).map((msg, i) => (
+                   {(myMessages || []).filter(m => m.fromId === messageModal.receiverId || m.toId === messageModal.receiverId).sort((a,b) => (new Date(a.date || 0)) - (new Date(b.date || 0))).map((msg, i) => (
                      <div key={i} className={`flex ${msg.fromId === user.uid ? 'justify-end' : 'justify-start'}`}>
                         <div className={`p-4 rounded-2xl max-w-[80%] text-sm font-bold ${msg.fromId === user.uid ? 'bg-zinc-900 text-white rounded-br-none' : 'bg-zinc-100 text-zinc-800 rounded-bl-none'}`}>
                            {msg.text}
@@ -421,7 +409,6 @@ export default function Dashboard({ user }) {
                      </div>
                    ))}
                 </div>
-
                 <div className="p-4 bg-white border-t border-zinc-100">
                    <div className="flex gap-2 bg-zinc-50 p-2 rounded-[2rem] border border-zinc-100">
                        <input className="flex-1 bg-transparent px-4 outline-none font-bold text-sm text-zinc-900" placeholder="اكتب رسالة..." value={msgText} onChange={(e) => setMsgText(e.target.value)} />
