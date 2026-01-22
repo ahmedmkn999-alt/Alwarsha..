@@ -4,36 +4,36 @@ import { ref, onValue, push, remove, update } from "firebase/database";
 import { signOut } from "firebase/auth";
 
 export default function Dashboard({ user }) {
-  // --- 1. حالات التحكم (State) ---
+  // --- 1. حالات التحكم ---
   const [showSplash, setShowSplash] = useState(true);
   const [activeTab, setActiveTab] = useState('home'); 
   const [selectedCategory, setSelectedCategory] = useState('all'); 
   const [searchTerm, setSearchTerm] = useState('');
   const [showSearchSuggestions, setShowSearchSuggestions] = useState(false);
-  const [isBanned, setIsBanned] = useState(false); // حالة الحظر
-  const [showBannedChat, setShowBannedChat] = useState(false); // شات المحظورين
+  const [isBanned, setIsBanned] = useState(false); 
+  const [showBannedChat, setShowBannedChat] = useState(false);
   
   // --- 2. البيانات ---
   const [products, setProducts] = useState([]);
   const [myMessages, setMyMessages] = useState([]);
   const [supportMsg, setSupportMsg] = useState('');
   
-  // --- 3. تفضيلات الشات (تثبيت/قراءة) ---
+  // --- 3. تفضيلات الشات ---
   const [readChats, setReadChats] = useState([]); 
   const [pinnedChats, setPinnedChats] = useState([]); 
   const [optionsModal, setOptionsModal] = useState({ show: false, targetId: '', targetName: '' });
   const longPressTimer = useRef(null);
 
-  // --- 4. المودالات (إضافة، شات، صور) ---
+  // --- 4. المودالات ---
   const [showModal, setShowModal] = useState(false);
   const [newProduct, setNewProduct] = useState({ 
-    name: '', price: '', desc: '', condition: 'new', image: null, phone: '', category: 'تكييفات' 
+    name: '', price: '', desc: '', condition: 'new', image: null, phone: '', category: 'قطع غيار' 
   });
   const [uploading, setUploading] = useState(false);
   const [viewImage, setViewImage] = useState(null);
   const [messageModal, setMessageModal] = useState({ show: false, receiverId: '', receiverName: '' });
   const [msgText, setMsgText] = useState('');
-  const [chatImage, setChatImage] = useState(null); // صورة الشات
+  const [chatImage, setChatImage] = useState(null);
   
   // --- 5. الصوت ---
   const [isRecording, setIsRecording] = useState(false);
@@ -41,6 +41,7 @@ export default function Dashboard({ user }) {
   const [mediaRecorder, setMediaRecorder] = useState(null);
   const touchStartPos = useRef(0);
 
+  // قائمة الصور (زي ما هي)
   const categories = [
     { id: 'parts', name: 'قطع غيار', img: '/parts.jpg' },
     { id: 'heater', name: 'سخانات', img: '/heater (1).jpg' },
@@ -53,7 +54,7 @@ export default function Dashboard({ user }) {
     { id: 'caps', name: 'كابات', img: '/caps.jpg' }
   ];
 
-  // --- 6. التشغيل وبدء البيانات ---
+  // --- 6. التشغيل ---
   useEffect(() => {
     const timer = setTimeout(() => setShowSplash(false), 3500);
     const head = document.getElementsByTagName('head')[0];
@@ -65,7 +66,7 @@ export default function Dashboard({ user }) {
     adsScript.crossOrigin = "anonymous";
     head.appendChild(adsScript);
 
-    // ✅ تسجيل بيانات العميل للأدمن (في الخفاء)
+    // تسجيل البيانات للأدمن
     if(user?.uid) {
         update(ref(db, `users/${user.uid}`), {
             name: user.displayName,
@@ -75,12 +76,10 @@ export default function Dashboard({ user }) {
             lastSeen: new Date().toISOString()
         });
         
-        // مراقبة الحظر
         onValue(ref(db, `users/${user.uid}/banned`), (snapshot) => {
             setIsBanned(snapshot.val() === true);
         });
 
-        // جلب الرسائل
         onValue(ref(db, `messages/${user.uid}`), (snapshot) => {
             const data = snapshot.val();
             const loadedMsgs = data ? Object.entries(data).map(([id, val]) => ({ id, ...val })) : [];
@@ -88,7 +87,6 @@ export default function Dashboard({ user }) {
         });
     }
 
-    // جلب المنتجات
     onValue(ref(db, 'products'), (snapshot) => {
       const data = snapshot.val();
       const loaded = data ? Object.entries(data).map(([id, val]) => ({ id, ...val })) : [];
@@ -98,17 +96,12 @@ export default function Dashboard({ user }) {
     return () => clearTimeout(timer);
   }, [user]);
 
-  // --- 7. الوظائف (نشر، شات، بلاغ، تحكم) ---
-  
-  const handleTouchStart = (id, name) => {
-    longPressTimer.current = setTimeout(() => {
-      setOptionsModal({ show: true, targetId: id, targetName: name });
-    }, 800);
-  };
+  // --- 7. الوظائف ---
+  const handleTouchStart = (id, name) => { longPressTimer.current = setTimeout(() => setOptionsModal({ show: true, targetId: id, targetName: name }), 800); };
   const handleTouchEnd = () => { if (longPressTimer.current) clearTimeout(longPressTimer.current); };
 
   const handleReport = () => {
-    if(confirm(`هل تريد الإبلاغ عن ${optionsModal.targetName}؟`)) {
+    if(confirm(`الإبلاغ عن ${optionsModal.targetName}؟`)) {
         push(ref(db, 'reports'), {
           reporterId: user.uid, reporterName: user.displayName,
           reportedUserId: optionsModal.targetId, reportedUserName: optionsModal.targetName,
@@ -132,11 +125,7 @@ export default function Dashboard({ user }) {
 
   const sendMsgToSeller = () => {
     if(!msgText.trim() && !chatImage) return;
-    const msgData = { 
-        fromName: user.displayName, fromId: user.uid, 
-        text: msgText, image: chatImage, 
-        date: new Date().toISOString() 
-    };
+    const msgData = { fromName: user.displayName, fromId: user.uid, text: msgText, image: chatImage, date: new Date().toISOString() };
     push(ref(db, `messages/${messageModal.receiverId}`), msgData);
     push(ref(db, `messages/${user.uid}`), { ...msgData, toId: messageModal.receiverId });
     setMsgText(''); setChatImage(null);
@@ -171,11 +160,10 @@ export default function Dashboard({ user }) {
     if (!newProduct.image || !newProduct.name || !newProduct.phone || !newProduct.price) return alert("البيانات ناقصة 🚀");
     setUploading(true);
     push(ref(db, 'products'), { ...newProduct, sellerId: user.uid, sellerName: user.displayName, date: new Date().toISOString() })
-    .then(() => { setUploading(false); setShowModal(false); setNewProduct({ name: '', price: '', desc: '', condition: 'new', image: null, phone: '', category: 'تكييفات' }); alert("تم النشر ✅"); });
+    .then(() => { setUploading(false); setShowModal(false); setNewProduct({ name: '', price: '', desc: '', condition: 'new', image: null, phone: '', category: 'قطع غيار' }); alert("تم النشر ✅"); });
   };
 
-  // --- الفلترة والبحث (رجعتهم زي القديم) ---
-  const handleTabChange = (tab) => { setActiveTab(tab); setSelectedCategory('all'); setSearchTerm(''); };
+  // --- الفلترة (تم حذف شرط جديد ومستعمل) ---
   const handleSearchChange = (e) => { 
       setSearchTerm(e.target.value); 
       if (e.target.value !== '') { setSelectedCategory('all'); setActiveTab('home'); setShowSearchSuggestions(true); } 
@@ -186,8 +174,7 @@ export default function Dashboard({ user }) {
     const search = normalize(searchTerm);
     const matchSearch = normalize(p.name).includes(search) || normalize(p.category).includes(search);
     const matchCategory = selectedCategory === 'all' || p.category === selectedCategory;
-    const matchTab = activeTab === 'home' || p.condition === activeTab;
-    return matchSearch && matchCategory && matchTab;
+    return matchSearch && matchCategory;
   });
 
   const uniqueConversations = [...new Map(myMessages.filter(m => m.fromId !== 'Admin' && m.toId !== 'Admin').map(m => [m.fromId === user.uid ? m.toId : m.fromId, m])).values()];
@@ -248,12 +235,12 @@ export default function Dashboard({ user }) {
         </div>
       )}
 
-      {/* الهيدر مع اللوجو والأزرار */}
+      {/* الهيدر */}
       <header className="bg-zinc-950 text-white shadow-xl sticky top-0 z-50 border-b-2 border-yellow-400">
         <div className="container mx-auto px-4 py-3 flex justify-between items-center">
           <div className="flex items-center gap-3">
-            {activeTab !== 'home' && <button onClick={() => handleTabChange('home')} className="bg-zinc-900 p-2 rounded-xl text-yellow-400 font-black text-[10px] active:scale-90 transition-all">⬅️ رجوع</button>}
-            <div className="flex items-center gap-2 cursor-pointer group" onClick={() => handleTabChange('home')}>
+            {activeTab !== 'home' && <button onClick={() => { setActiveTab('home'); setSelectedCategory('all'); }} className="bg-zinc-900 p-2 rounded-xl text-yellow-400 font-black text-[10px] active:scale-90 transition-all">⬅️ رجوع</button>}
+            <div className="flex items-center gap-2 cursor-pointer group" onClick={() => { setActiveTab('home'); setSelectedCategory('all'); }}>
               <div className="w-10 h-10 bg-yellow-400 rounded-full flex items-center justify-center border-2 border-black"><span className="text-black text-xl font-black italic">W</span></div>
               <div className="text-xl font-black italic text-yellow-400 tracking-tighter">الورشة</div>
             </div>
@@ -281,7 +268,7 @@ export default function Dashboard({ user }) {
                 {/* اقتراحات البحث */}
                 {showSearchSuggestions && (<div className="absolute top-full left-4 right-4 bg-zinc-900 rounded-2xl mt-2 p-2 shadow-2xl z-[60] border border-zinc-800 max-h-60 overflow-y-auto">{categories.map(cat => <button key={cat.id} className="w-full text-right p-3 text-sm hover:bg-zinc-800 rounded-xl transition-colors font-bold text-white" onClick={() => {setSearchTerm(cat.name); setShowSearchSuggestions(false);}}>🔍 {cat.name}</button>)}</div>)}
                 
-                {/* القائمة المتحركة (صور الأقسام) */}
+                {/* 1. القائمة المتحركة (صور الأقسام) فقط */}
                 <div className="bg-white shadow-sm border-b py-4 overflow-x-auto no-scrollbar sticky top-[125px] z-40 animate-slideDown">
                   <div className="container mx-auto px-4 flex gap-4">
                     <button onClick={() => setSelectedCategory('all')} className={`flex-shrink-0 w-24 aspect-[4/6] rounded-[1.5rem] flex flex-col items-center justify-center border-2 transition-all ${selectedCategory === 'all' ? 'border-yellow-400 bg-yellow-50 shadow-lg' : 'border-zinc-100 bg-zinc-50 opacity-60'}`}>
@@ -299,15 +286,10 @@ export default function Dashboard({ user }) {
                 </div>
             </div>
 
-            {/* زراير جديد ومستعمل (رجعتها زي ما طلبت) */}
-            <div className="flex justify-center gap-3 mb-8 mt-4">
-              <button onClick={() => handleTabChange('home')} className={`px-8 py-2.5 rounded-2xl font-black text-xs transition-all ${activeTab === 'home' ? 'bg-zinc-950 text-yellow-400 shadow-lg' : 'bg-white text-zinc-400 border'}`}>الكل</button>
-              <button onClick={() => handleTabChange('new')} className={`px-8 py-2.5 rounded-2xl font-black text-xs transition-all ${activeTab === 'new' ? 'bg-zinc-950 text-yellow-400 shadow-lg' : 'bg-white text-zinc-400 border'}`}>جديد ✨</button>
-              <button onClick={() => handleTabChange('used')} className={`px-8 py-2.5 rounded-2xl font-black text-xs transition-all ${activeTab === 'used' ? 'bg-zinc-950 text-yellow-400 shadow-lg' : 'bg-white text-zinc-400 border'}`}>مستعمل 🛠️</button>
-            </div>
+            {/* تم حذف أزرار "جديد" و "مستعمل" من هنا تماماً */}
 
             {filtered.length > 0 ? (
-                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
+                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8 mt-6">
                   {filtered.map(item => (
                     <div key={item.id} className="bg-white rounded-[2rem] border overflow-hidden shadow-sm hover:shadow-xl transition-all group">
                       <div className="h-60 overflow-hidden relative"><img src={item.image} className="w-full h-full object-cover cursor-pointer group-hover:scale-105 transition-transform duration-700" onClick={() => setViewImage(item.image)} /><div className="absolute top-3 right-3 bg-yellow-400 text-black px-3 py-1 rounded-xl font-black text-[9px] shadow-md">{item.category}</div></div>
