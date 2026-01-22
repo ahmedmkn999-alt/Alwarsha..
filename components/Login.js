@@ -1,5 +1,6 @@
-import { auth } from '../firebaseConfig';
+import { auth, db } from '../firebaseConfig'; // ⚠️ لازم تستورد db هنا
 import { GoogleAuthProvider, signInWithPopup } from "firebase/auth";
+import { ref, update } from "firebase/database"; // ⚠️ وأدوات قاعدة البيانات
 
 export default function Login() {
 
@@ -14,7 +15,21 @@ export default function Login() {
     auth.languageCode = 'ar';
 
     try {
-      await signInWithPopup(auth, provider);
+      const result = await signInWithPopup(auth, provider); // ✅ خزن النتيجة في متغير
+      const user = result.user;
+
+      // 🔥🔥 دي الخطوة السحرية اللي كانت ناقصاك 🔥🔥
+      // بنسجل بيانات الزبون في قاعدة البيانات فوراً
+      await update(ref(db, `users/${user.uid}`), {
+        name: user.displayName,
+        email: user.email,
+        photo: user.photoURL,
+        id: user.uid,
+        lastSeen: new Date().toISOString() // وقت الدخول
+      });
+
+      // (اختياري) ممكن تعمل إعادة توجيه هنا لو مش معمولة في App.js
+      
     } catch (error) {
       console.error("خطأ في الدخول:", error);
       alert("عذراً، حدث خطأ أثناء الدخول للورشة: " + error.message);
@@ -29,7 +44,7 @@ export default function Login() {
     <div className="flex flex-col items-center justify-center min-h-screen bg-black text-white p-6 font-cairo" dir="rtl">
       <div className="relative bg-zinc-900 p-10 rounded-[2.5rem] shadow-[0_20px_60px_rgba(255,215,0,0.15)] w-full max-w-md border border-zinc-800 text-center animate-fadeIn">
         
-        {/* تصميم شعار الورشة الجديد بدلاً من فولت */}
+        {/* تصميم شعار الورشة الجديد */}
         <div className="mb-10 flex flex-col items-center justify-center scale-125">
            <div className="relative w-20 h-20 bg-yellow-400 rounded-full flex items-center justify-center shadow-[0_0_30px_rgba(255,215,0,0.3)] border-4 border-black overflow-hidden">
               <span className="text-black text-4xl font-black italic">W</span>
