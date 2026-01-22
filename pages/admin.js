@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react';
 import { auth, db } from '../firebaseConfig';
 import { onAuthStateChanged } from 'firebase/auth';
-import { ref, onValue, remove, push, update } from "firebase/database"; // ✅ ضفت update للحظر
+import { ref, onValue, remove, push, update } from "firebase/database";
 import { useRouter } from 'next/router';
 
 export default function AdminPanel() {
@@ -10,13 +10,13 @@ export default function AdminPanel() {
   const [loginForm, setLoginForm] = useState({ username: '', password: '' });
   const [loading, setLoading] = useState(true);
   
-  // التبويبات
-  const [activeTab, setActiveTab] = useState('users'); // خليتها تبدأ بالمستخدمين عشان تشوفهم علطول
+  // الحالة
+  const [activeTab, setActiveTab] = useState('products');
   const [products, setProducts] = useState([]);
   const [messages, setMessages] = useState([]);
-  const [allUsers, setAllUsers] = useState([]); // ✅ قائمة المستخدمين الجديدة
+  const [reports, setReports] = useState([]); // ✅ 1. ضفنا مكان لتخزين البلاغات
   
-  // الشات
+  // حالة الشات
   const [chatModal, setChatModal] = useState({ show: false, userId: '', userName: '' });
   const [replyText, setReplyText] = useState('');
   const [userChatHistory, setUserChatHistory] = useState([]);
@@ -43,27 +43,27 @@ export default function AdminPanel() {
   }, [loading]);
 
   const fetchData = () => {
-    // 1. المنتجات
+    // جلب المنتجات
     onValue(ref(db, 'products'), (snapshot) => {
       const data = snapshot.val();
       const list = data ? Object.entries(data).map(([id, val]) => ({ id, ...val })) : [];
       setProducts(list.reverse());
     });
-    // 2. رسائل الدعم
+    // جلب رسائل الدعم
     onValue(ref(db, 'support'), (snapshot) => {
       const data = snapshot.val();
       const list = data ? Object.entries(data).map(([id, val]) => ({ id, ...val })) : [];
       setMessages(list.reverse());
     });
-    // 3. ✅ المستخدمين (عشان الحظر)
-    onValue(ref(db, 'users'), (snapshot) => {
+    // ✅ 2. جلب البلاغات من قاعدة البيانات
+    onValue(ref(db, 'reports'), (snapshot) => {
       const data = snapshot.val();
       const list = data ? Object.entries(data).map(([id, val]) => ({ id, ...val })) : [];
-      setAllUsers(list.reverse()); // الأحدث فوق
+      setReports(list.reverse()); // الأحدث يظهر الأول
     });
   };
 
-  // جلب المحادثة
+  // جلب المحادثة للشات
   useEffect(() => {
     if (chatModal.show && chatModal.userId) {
       const chatRef = ref(db, `messages/${chatModal.userId}`);
@@ -82,11 +82,11 @@ export default function AdminPanel() {
     }
   };
 
-  // ✅ دالة الحظر الجديدة
-  const toggleBan = (userId, currentStatus, userName) => {
-    const action = currentStatus ? "فك الحظر" : "حظر";
-    if (confirm(`هل أنت متأكد من ${action} المستخدم ${userName}؟`)) {
-      update(ref(db, `users/${userId}`), { banned: !currentStatus });
+  // حظر المستخدم المبلغ عنه
+  const banUser = (userId) => {
+    if (confirm("هل تريد حظر هذا المستخدم نهائياً؟ 🚫")) {
+        update(ref(db, `users/${userId}`), { banned: true });
+        alert("تم الحظر بنجاح");
     }
   };
 
@@ -99,7 +99,6 @@ export default function AdminPanel() {
       date: new Date().toISOString()
     };
     push(ref(db, `messages/${chatModal.userId}`), msgData);
-    push(ref(db, `messages/Admin`), { ...msgData, toId: chatModal.userId });
     setReplyText('');
   };
 
@@ -128,93 +127,92 @@ export default function AdminPanel() {
   return (
     <div className="min-h-screen bg-zinc-950 text-white p-6 font-cairo" dir="rtl">
       
-      {/* الهيدر */}
-      <div className="flex justify-between items-center mb-8 border-b border-zinc-800 pb-6">
-        <div>
-            <h1 className="text-2xl font-black text-yellow-400 italic">AL-WARSHA CONTROL</h1>
-            <p className="text-[10px] text-zinc-500 font-mono tracking-widest">AHMED ADMIN PANEL</p>
-        </div>
-        <button onClick={() => router.push('/')} className="px-4 py-2 bg-zinc-800 rounded-xl text-xs hover:bg-white hover:text-black transition-all">الرئيسية 🏠</button>
+      <div className="flex justify-between items-center mb-10 border-b border-zinc-800 pb-6">
+        <h1 className="text-2xl font-black text-yellow-400 italic">AL-WARSHA CONTROL</h1>
+        <button onClick={() => router.push('/')} className="px-4 py-2 bg-zinc-800 rounded-xl text-xs">الرئيسية 🏠</button>
       </div>
 
-      {/* أزرار التبويب */}
-      <div className="flex gap-3 mb-8 overflow-x-auto pb-2">
-        <button onClick={() => setActiveTab('users')} className={`px-6 py-3 rounded-2xl font-black whitespace-nowrap ${activeTab === 'users' ? 'bg-blue-600 text-white shadow-lg' : 'bg-zinc-900 text-zinc-500'}`}>👥 المستخدمين ({allUsers.length})</button>
-        <button onClick={() => setActiveTab('products')} className={`px-6 py-3 rounded-2xl font-black whitespace-nowrap ${activeTab === 'products' ? 'bg-yellow-400 text-black shadow-lg shadow-yellow-400/20' : 'bg-zinc-900 text-zinc-500'}`}>📦 الأجهزة ({products.length})</button>
-        <button onClick={() => setActiveTab('messages')} className={`px-6 py-3 rounded-2xl font-black whitespace-nowrap ${activeTab === 'messages' ? 'bg-green-600 text-white shadow-lg' : 'bg-zinc-900 text-zinc-500'}`}>💬 الدعم ({messages.length})</button>
+      <div className="flex gap-4 mb-8">
+        <button onClick={() => setActiveTab('products')} className={`px-6 py-3 rounded-2xl font-black ${activeTab === 'products' ? 'bg-yellow-400 text-black shadow-lg shadow-yellow-400/20' : 'bg-zinc-900 text-zinc-500'}`}>المنتجات ({products.length})</button>
+        <button onClick={() => setActiveTab('messages')} className={`px-6 py-3 rounded-2xl font-black ${activeTab === 'messages' ? 'bg-yellow-400 text-black shadow-lg shadow-yellow-400/20' : 'bg-zinc-900 text-zinc-500'}`}>الدعم ({messages.length})</button>
+        {/* ✅ 3. زرار جديد للتبديل للبلاغات */}
+        <button onClick={() => setActiveTab('reports')} className={`px-6 py-3 rounded-2xl font-black ${activeTab === 'reports' ? 'bg-red-600 text-white shadow-lg shadow-red-600/20' : 'bg-zinc-900 text-zinc-500'}`}>البلاغات 🚨 ({reports.length})</button>
       </div>
 
-      <div className="bg-zinc-900 rounded-[2.5rem] border border-zinc-800 overflow-hidden shadow-2xl animate-fadeIn p-6 min-h-[500px]">
-        
-        {/* ✅ 1. قائمة المستخدمين (تحت بعض) */}
-        {activeTab === 'users' && (
-          <div className="flex flex-col gap-4">
-            {allUsers.length === 0 ? <p className="text-zinc-500 text-center">مفيش مستخدمين لسه</p> : allUsers.map(u => (
-              <div key={u.id} className={`p-4 rounded-[2rem] border flex items-center justify-between transition-all ${u.banned ? 'bg-red-900/20 border-red-500' : 'bg-black border-zinc-800'}`}>
-                 <div className="flex items-center gap-4">
-                    <img src={u.photo} className="w-14 h-14 rounded-full border border-zinc-700" alt={u.name} />
-                    <div>
-                       <h3 className="font-black text-white text-sm">{u.name} {u.banned && <span className="text-[10px] text-red-500">(محظور)</span>}</h3>
-                       <p className="text-[10px] text-zinc-500">{u.email}</p>
-                       <p className="text-[9px] text-zinc-600 mt-1 font-mono">{u.id.slice(0,8)}...</p>
-                    </div>
-                 </div>
-                 <button onClick={() => toggleBan(u.id, u.banned, u.name)} className={`px-4 py-2 rounded-xl text-xs font-black transition-all ${u.banned ? 'bg-green-600 hover:bg-green-500' : 'bg-red-600 hover:bg-red-500'}`}>
-                    {u.banned ? 'فك الحظر ✅' : 'حظر ⛔'}
-                 </button>
-              </div>
-            ))}
-          </div>
-        )}
-
-        {/* ✅ 2. قائمة الأجهزة (تحت بعض) */}
+      <div className="bg-zinc-900 rounded-[2.5rem] border border-zinc-800 overflow-hidden shadow-2xl animate-fadeIn">
         {activeTab === 'products' && (
-          <div className="flex flex-col gap-4">
-            {products.map(p => (
-              <div key={p.id} className="bg-black p-4 rounded-[2rem] border border-zinc-800 flex items-center justify-between hover:border-yellow-400/30 transition-all">
-                <div className="flex items-center gap-4">
-                    <img src={p.image} className="w-16 h-16 rounded-2xl object-cover border border-zinc-700" />
-                    <div>
-                        <h4 className="font-black text-white text-sm">{p.name}</h4>
-                        <p className="text-[10px] text-zinc-500">{p.category} | {p.sellerName}</p>
-                        <p className="text-yellow-400 font-bold text-xs mt-1">{p.price} ج.م</p>
-                    </div>
+          <div className="overflow-x-auto">
+            <table className="w-full text-right text-sm">
+              <thead className="bg-black text-zinc-500">
+                <tr><th className="p-6">الجهاز</th><th className="p-6">السعر</th><th className="p-6">القسم</th><th className="p-6 text-center">حذف</th></tr>
+              </thead>
+              <tbody className="divide-y divide-zinc-800">
+                {products.map(p => (
+                  <tr key={p.id}>
+                    <td className="p-6 flex items-center gap-4"><img src={p.image} className="w-12 h-12 rounded-xl object-cover" />{p.name}</td>
+                    <td className="p-6 text-yellow-400 font-bold">{p.price} ج.م</td>
+                    <td className="p-6"><span className="bg-zinc-800 px-3 py-1 rounded-lg text-[9px]">{p.category}</span></td>
+                    <td className="p-6 text-center"><button onClick={() => deleteItem('products', p.id)} className="text-red-500 hover:scale-125 transition-transform">🗑️</button></td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        )}
+
+        {activeTab === 'messages' && (
+          <div className="p-6 grid grid-cols-1 md:grid-cols-2 gap-4">
+            {messages.map(msg => (
+              <div key={msg.id} className="bg-black p-6 rounded-[2rem] border border-zinc-800 flex flex-col justify-between hover:border-yellow-400/30 transition-all">
+                <div className="mb-4">
+                   <div className="flex justify-between items-center mb-2">
+                      <span className="font-black text-yellow-400 text-sm">{msg.userName}</span>
+                      <span className="text-[9px] text-zinc-600 italic">{new Date(msg.date).toLocaleDateString('ar-EG')}</span>
+                   </div>
+                   <p className="text-zinc-300 text-xs font-bold leading-relaxed">{msg.msg}</p>
                 </div>
-                <button onClick={() => deleteItem('products', p.id)} className="bg-red-500/10 text-red-500 px-4 py-2 rounded-xl font-black text-xs hover:bg-red-600 hover:text-white transition-all">حذف 🗑️</button>
+                <div className="flex justify-end gap-3 border-t border-zinc-800 pt-4">
+                  <button onClick={() => setChatModal({ show: true, userId: msg.userId, userName: msg.userName })} className="text-[10px] font-black text-yellow-400 bg-yellow-400/10 px-4 py-2 rounded-xl">رد 💬</button>
+                  <button onClick={() => deleteItem('support', msg.id)} className="text-[10px] font-black text-red-500">حذف ×</button>
+                </div>
               </div>
             ))}
           </div>
         )}
 
-        {/* ✅ 3. قائمة رسائل الدعم (تحت بعض) */}
-        {activeTab === 'messages' && (
-          <div className="flex flex-col gap-4">
-            {messages.map(msg => (
-              <div key={msg.id} className="bg-black p-6 rounded-[2rem] border border-zinc-800 hover:border-zinc-600 transition-all">
-                <div className="flex justify-between items-start mb-2">
-                   <div>
-                      <span className="font-black text-white text-sm block">{msg.userName}</span>
-                      <span className="text-[9px] text-zinc-600">{new Date(msg.date).toLocaleDateString('ar-EG')}</span>
+        {/* ✅ 4. قسم عرض البلاغات الجديد */}
+        {activeTab === 'reports' && (
+          <div className="p-6 grid grid-cols-1 gap-4">
+            {reports.length === 0 ? <p className="text-zinc-500 text-center">لا توجد بلاغات حالياً ✅</p> : reports.map(rep => (
+              <div key={rep.id} className="bg-black p-6 rounded-[2rem] border border-red-900/30 flex flex-col justify-between hover:border-red-600/50 transition-all">
+                <div className="mb-4">
+                   <div className="flex justify-between items-center mb-2">
+                      <span className="font-black text-red-500 text-sm">بلاغ ضد: {rep.reportedUserName}</span>
+                      <span className="text-[9px] text-zinc-600 italic">{new Date(rep.date).toLocaleDateString('ar-EG')}</span>
                    </div>
-                   <button onClick={() => deleteItem('support', msg.id)} className="text-zinc-600 hover:text-red-500 font-bold">×</button>
+                   <p className="text-zinc-400 text-xs mt-1">المُبلغ: <span className="text-white font-bold">{rep.reporterName}</span></p>
+                   <div className="mt-3 bg-zinc-900 p-3 rounded-xl border border-zinc-800">
+                      <p className="text-zinc-300 text-xs font-bold">📝 السبب: {rep.reason}</p>
+                   </div>
                 </div>
-                <p className="text-zinc-300 text-xs font-bold leading-relaxed mb-4 border-l-2 border-yellow-400 pl-3">{msg.msg}</p>
-                <div className="flex justify-end">
-                  <button onClick={() => setChatModal({ show: true, userId: msg.userId, userName: msg.userName })} className="bg-yellow-400 text-black px-6 py-2 rounded-xl text-xs font-black hover:scale-105 transition-transform">رد وتواصل 💬</button>
+                <div className="flex justify-end gap-3 border-t border-zinc-800 pt-4">
+                  <button onClick={() => banUser(rep.reportedUserId)} className="text-[10px] font-black text-white bg-red-600 px-4 py-2 rounded-xl hover:bg-red-700 transition-colors">حظر المبلغ عنه 🚫</button>
+                  <button onClick={() => deleteItem('reports', rep.id)} className="text-[10px] font-black text-zinc-500 hover:text-white">إغلاق البلاغ</button>
                 </div>
               </div>
             ))}
           </div>
         )}
+
       </div>
 
-      {/* مودال الشات الكامل (Admin View) */}
+      {/* مودال الشات */}
       {chatModal.show && (
         <div className="fixed inset-0 bg-black/95 z-[200] flex items-center justify-center p-4 backdrop-blur-md">
           <div className="bg-zinc-900 w-full max-w-lg h-[80vh] rounded-[3rem] border border-zinc-800 flex flex-col shadow-2xl overflow-hidden animate-slideUp">
             <div className="p-6 bg-zinc-800 border-b border-zinc-700 flex justify-between items-center">
                <h3 className="font-black text-yellow-400">محادثة: {chatModal.userName}</h3>
-               <button onClick={() => setChatModal({ show: false, userId: '', userName: '' })} className="text-2xl text-zinc-400 hover:text-white">&times;</button>
+               <button onClick={() => setChatModal({ show: false, userId: '', userName: '' })} className="text-2xl">&times;</button>
             </div>
             
             <div className="flex-1 overflow-y-auto p-6 space-y-4 flex flex-col no-scrollbar">
@@ -242,7 +240,6 @@ export default function AdminPanel() {
         </div>
       )}
 
-      {/* التوقيع */}
       <div className="text-center mt-12 opacity-50">
         <p className="text-[12px] text-[#D4AF37] font-black uppercase tracking-[0.4em] italic drop-shadow-md">AHMED</p>
         <p className="text-[8px] text-zinc-800 font-bold mt-1">THE WORKSHOP ADMIN SYSTEM • 2026</p>
