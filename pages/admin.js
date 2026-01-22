@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import { auth, db } from '../firebaseConfig';
-import { onAuthStateChanged, signInWithPopup, GoogleAuthProvider } from 'firebase/auth';
+import { onAuthStateChanged, signInWithPopup, GoogleAuthProvider, signOut } from 'firebase/auth';
 import { ref, onValue, remove, push, update } from "firebase/database";
 import { useRouter } from 'next/router';
 
@@ -11,9 +11,9 @@ export default function AdminPanel() {
   const [loading, setLoading] = useState(true);
   
   // التبويبات
-  const [activeTab, setActiveTab] = useState('users'); 
+  const [activeTab, setActiveTab] = useState('messages'); // خليت الدعم هو الافتراضي عشان تشوف الرسايل علطول
   const [products, setProducts] = useState([]);
-  const [messages, setMessages] = useState([]);
+  const [supportTickets, setSupportTickets] = useState([]); // دي عشان تذاكر الدعم
   const [allUsers, setAllUsers] = useState([]); 
   const [reports, setReports] = useState([]); 
 
@@ -23,6 +23,8 @@ export default function AdminPanel() {
   const [userChatHistory, setUserChatHistory] = useState([]);
 
   const router = useRouter();
+  
+  // ⚠️ بيانات الأدمن
   const ADMIN_EMAIL = "ahmedmkn999@gmail.com";
   const REQUIRED_USER = "ahmed"; 
   const REQUIRED_PASS = "0112838183800"; 
@@ -34,7 +36,6 @@ export default function AdminPanel() {
     const unsubscribe = onAuthStateChanged(auth, (currentUser) => {
       if (currentUser) {
         setUser(currentUser);
-        // لو هو الأدمن، هات البيانات
         if(currentUser.email === ADMIN_EMAIL) {
             fetchData();
         }
@@ -47,26 +48,52 @@ export default function AdminPanel() {
   }, []);
 
   const fetchData = () => {
+    // 1. المنتجات
     onValue(ref(db, 'products'), (snapshot) => {
       const data = snapshot.val();
       setProducts(data ? Object.entries(data).map(([id, val]) => ({ id, ...val })).reverse() : []);
     });
-    onValue(ref(db, 'support'), (snapshot) => {
+
+    // 2. تذاكر الدعم (التعديل المهم)
+    // بنجيب الداتا من support_tickets اللي اليوزر بيبعت عليها
+    onValue(ref(db, 'support_tickets'), (snapshot) => {
       const data = snapshot.val();
-      setMessages(data ? Object.entries(data).map(([id, val]) => ({ id, ...val })).reverse() : []);
+      if (data) {
+        // تحويل الداتا لليستة يوزرز بعتوا رسايل
+        const tickets = Object.entries(data).map(([uid, msgs]) => {
+            const msgsList = Object.values(msgs);
+            const lastMsg = msgsList[msgsList.length - 1]; // آخر رسالة مبعوثة
+            return {
+                userId: uid,
+                userName: lastMsg.fromName,
+                lastMessage: lastMsg.text,
+                date: lastMsg.date,
+                id: uid // بنستخدم الـ UID كمعرف للتذكرة
+            };
+        });
+        setSupportTickets(tickets);
+      } else {
+        setSupportTickets([]);
+      }
     });
+
+    // 3. المستخدمين
     onValue(ref(db, 'users'), (snapshot) => {
       const data = snapshot.val();
       setAllUsers(data ? Object.entries(data).map(([id, val]) => ({ id, ...val })).reverse() : []);
     });
+
+    // 4. البلاغات
     onValue(ref(db, 'reports'), (snapshot) => {
       const data = snapshot.val();
       setReports(data ? Object.entries(data).map(([id, val]) => ({ id, ...val })).reverse() : []);
     });
   };
 
+  // فتح الشات وجلب الهيستوري كامل
   useEffect(() => {
     if (chatModal.show && chatModal.userId) {
+      // هنا بنجيب الشات كله (Support + Normal) من ملف الرسايل الأساسي
       const chatRef = ref(db, `messages/${chatModal.userId}`);
       onValue(chatRef, (snapshot) => {
         const data = snapshot.val();
@@ -87,11 +114,23 @@ export default function AdminPanel() {
     }
   };
 
+  // إرسال الرد
   const sendReply = () => {
     if (!replyText.trim()) return;
-    const msgData = { fromName: "إدارة الورشة ⚡", fromId: "Admin", text: replyText, date: new Date().toISOString() };
+    
+    const msgData = { 
+        fromName: "الدعم الفني 🛡️", // الاسم اللي هيظهر لليوزر
+        fromId: "Support",          // عشان يتميز بلون مختلف
+        text: replyText, 
+        date: new Date().toISOString() 
+    };
+
+    // 1. ابعت لليوزر في صندوقه
     push(ref(db, `messages/${chatModal.userId}`), msgData);
-    push(ref(db, `messages/Admin`), { ...msgData, toId: chatModal.userId });
+    
+    // 2. احفظ نسخة في سجل الدعم عشان متضعش
+    push(ref(db, `support_tickets/${chatModal.userId}`), msgData);
+
     setReplyText('');
   };
 
@@ -102,6 +141,11 @@ export default function AdminPanel() {
     } catch (error) {
         alert("خطأ: " + error.message);
     }
+  };
+
+  // --- دوال الوقت ---
+  const safeTime = (d) => {
+    try { return new Date(d).toLocaleTimeString([], {hour:'2-digit', minute:'2-digit'}); } catch { return ""; }
   };
 
   if (loading) return <div className="h-screen bg-black flex items-center justify-center text-yellow-400 font-black">جاري التحميل...</div>;
@@ -120,7 +164,7 @@ export default function AdminPanel() {
         <div className="h-screen bg-black flex flex-col items-center justify-center text-white font-cairo">
             <h1 className="text-red-500 font-black text-2xl mb-4">غير مسموح بالدخول 🚫</h1>
             <p className="text-zinc-500 mb-6">الإيميل {user.email} ليس مسؤولاً.</p>
-            <button onClick={() => auth.signOut()} className="bg-zinc-800 px-6 py-2 rounded-lg">خروج</button>
+            <button onClick={() => signOut(auth)} className="bg-zinc-800 px-6 py-2 rounded-lg">خروج</button>
         </div>
     );
   }
@@ -151,50 +195,57 @@ export default function AdminPanel() {
       </div>
 
       <div className="flex gap-4 mb-8 overflow-x-auto pb-2">
+        <button onClick={() => setActiveTab('messages')} className={`px-6 py-3 rounded-2xl font-black whitespace-nowrap ${activeTab === 'messages' ? 'bg-red-600 text-white' : 'bg-zinc-900 text-zinc-500'}`}>تذاكر الدعم ({supportTickets.length})</button>
         <button onClick={() => setActiveTab('users')} className={`px-6 py-3 rounded-2xl font-black whitespace-nowrap ${activeTab === 'users' ? 'bg-blue-600 text-white' : 'bg-zinc-900 text-zinc-500'}`}>المستخدمين ({allUsers.length})</button>
         <button onClick={() => setActiveTab('products')} className={`px-6 py-3 rounded-2xl font-black whitespace-nowrap ${activeTab === 'products' ? 'bg-yellow-400 text-black' : 'bg-zinc-900 text-zinc-500'}`}>المنتجات ({products.length})</button>
-        <button onClick={() => setActiveTab('messages')} className={`px-6 py-3 rounded-2xl font-black whitespace-nowrap ${activeTab === 'messages' ? 'bg-green-600 text-white' : 'bg-zinc-900 text-zinc-500'}`}>الدعم ({messages.length})</button>
-        <button onClick={() => setActiveTab('reports')} className={`px-6 py-3 rounded-2xl font-black whitespace-nowrap ${activeTab === 'reports' ? 'bg-red-600 text-white' : 'bg-zinc-900 text-zinc-500'}`}>البلاغات ({reports.length})</button>
+        <button onClick={() => setActiveTab('reports')} className={`px-6 py-3 rounded-2xl font-black whitespace-nowrap ${activeTab === 'reports' ? 'bg-zinc-700 text-white' : 'bg-zinc-900 text-zinc-500'}`}>البلاغات ({reports.length})</button>
       </div>
 
       <div className="bg-zinc-900 rounded-[2.5rem] border border-zinc-800 overflow-hidden shadow-2xl animate-fadeIn p-6 min-h-[500px]">
+        
+        {/* --- 1. تبويب رسائل الدعم --- */}
+        {activeTab === 'messages' && (
+          <div className="flex flex-col gap-4">
+            {supportTickets.length === 0 ? <p className="text-zinc-500 text-center py-10">لا توجد رسائل دعم جديدة ✅</p> : supportTickets.map(ticket => (
+              <div key={ticket.userId} className="bg-black p-6 rounded-[2rem] border border-zinc-800 flex justify-between items-center hover:border-yellow-400 transition-all cursor-pointer" onClick={() => setChatModal({ show: true, userId: ticket.userId, userName: ticket.userName })}>
+                <div>
+                    <h4 className="font-black text-white text-sm mb-1">{ticket.userName} <span className="text-[10px] text-red-500 bg-red-900/20 px-2 rounded-full">طلب دعم</span></h4>
+                    <p className="text-zinc-400 text-xs line-clamp-1">{ticket.lastMessage}</p>
+                </div>
+                <button className="bg-yellow-400 text-black px-4 py-2 rounded-xl text-xs font-black">رد 💬</button>
+              </div>
+            ))}
+          </div>
+        )}
+
+        {/* --- 2. تبويب المستخدمين --- */}
         {activeTab === 'users' && (
           <div className="flex flex-col gap-4">
             {allUsers.length === 0 ? <p className="text-zinc-500 text-center">لا يوجد مستخدمين</p> : allUsers.map(u => (
               <div key={u.id} className={`p-4 rounded-[2rem] border flex items-center justify-between transition-all ${u.banned ? 'border-red-500 bg-red-900/10' : 'border-zinc-800 bg-black'}`}>
                  <div className="flex items-center gap-4">
-                    <img src={u.photo} className="w-14 h-14 rounded-full border border-zinc-700" alt={u.name} />
+                    <img src={u.photo || 'https://via.placeholder.com/50'} className="w-14 h-14 rounded-full border border-zinc-700" alt={u.name} />
                     <div><h3 className="font-black text-white text-sm">{u.name}</h3><p className="text-[10px] text-zinc-500">{u.email}</p></div>
                  </div>
-                 <button onClick={() => toggleBan(u.id, u.banned)} className={`px-4 py-2 rounded-xl text-xs font-black ${u.banned ? 'bg-green-600' : 'bg-red-600'}`}>{u.banned ? 'فك الحظر' : 'حظر'}</button>
+                 <button onClick={() => toggleBan(u.id, u.banned)} className={`px-4 py-2 rounded-xl text-xs font-black ${u.banned ? 'bg-green-600' : 'bg-red-600'}`}>{u.banned ? 'فك الحظر' : 'حظر 🚫'}</button>
               </div>
             ))}
           </div>
         )}
 
+        {/* --- 3. تبويب المنتجات --- */}
         {activeTab === 'products' && (
           <div className="flex flex-col gap-4">
             {products.map(p => (
               <div key={p.id} className="bg-black p-4 rounded-[2rem] border border-zinc-800 flex items-center justify-between">
                 <div className="flex items-center gap-4"><img src={p.image} className="w-16 h-16 rounded-2xl object-cover" /><div className="text-right"><h4 className="font-black text-sm">{p.name}</h4><p className="text-yellow-400 font-bold text-xs">{p.price} ج.م</p></div></div>
-                <button onClick={() => deleteItem('products', p.id)} className="text-red-500 font-bold text-xs">حذف</button>
+                <button onClick={() => deleteItem('products', p.id)} className="text-red-500 font-bold text-xs border border-red-900 px-3 py-1 rounded-lg hover:bg-red-900/20">حذف</button>
               </div>
             ))}
           </div>
         )}
 
-        {activeTab === 'messages' && (
-          <div className="flex flex-col gap-4">
-            {messages.map(msg => (
-              <div key={msg.id} className="bg-black p-6 rounded-[2rem] border border-zinc-800">
-                <div className="flex justify-between mb-2"><span className="font-black text-sm">{msg.userName}</span><button onClick={() => deleteItem('support', msg.id)} className="text-red-500 text-xs">×</button></div>
-                <p className="text-zinc-400 text-xs mb-4">{msg.msg}</p>
-                <button onClick={() => setChatModal({ show: true, userId: msg.userId, userName: msg.userName })} className="bg-yellow-400 text-black px-4 py-2 rounded-xl text-xs font-black">رد 💬</button>
-              </div>
-            ))}
-          </div>
-        )}
-
+        {/* --- 4. تبويب البلاغات --- */}
         {activeTab === 'reports' && (
           <div className="flex flex-col gap-4">
             {reports.map(rep => (
@@ -208,16 +259,23 @@ export default function AdminPanel() {
         )}
       </div>
 
+      {/* --- Chat Modal (نافذة الرد) --- */}
       {chatModal.show && (
         <div className="fixed inset-0 bg-black/95 z-[200] flex items-center justify-center p-4 backdrop-blur-md">
           <div className="bg-zinc-900 w-full max-w-lg h-[80vh] rounded-[3rem] border border-zinc-800 flex flex-col shadow-2xl overflow-hidden animate-slideUp">
-            <div className="p-6 bg-zinc-800 border-b border-zinc-700 flex justify-between items-center"><h3 className="font-black text-yellow-400">محادثة: {chatModal.userName}</h3><button onClick={() => setChatModal({ show: false, userId: '', userName: '' })} className="text-2xl">&times;</button></div>
+            <div className="p-6 bg-zinc-800 border-b border-zinc-700 flex justify-between items-center">
+                <div className="flex flex-col">
+                    <h3 className="font-black text-yellow-400">محادثة: {chatModal.userName}</h3>
+                    <button onClick={() => toggleBan(chatModal.userId, false)} className="text-[10px] text-red-500 font-bold mt-1 text-right">🚫 حظر هذا المستخدم</button>
+                </div>
+                <button onClick={() => setChatModal({ show: false, userId: '', userName: '' })} className="text-2xl hover:text-red-500">&times;</button>
+            </div>
             <div className="flex-1 overflow-y-auto p-6 space-y-4 flex flex-col no-scrollbar">
                {userChatHistory.map((msg, i) => (
-                 <div key={i} className={`flex ${msg.fromId === 'Admin' ? 'justify-end' : 'justify-start'}`}>
-                    <div className={`p-4 rounded-2xl max-w-[85%] shadow-md ${msg.fromId === 'Admin' ? 'bg-yellow-400 text-black rounded-tr-none' : 'bg-zinc-800 text-white border border-zinc-700 rounded-tl-none'}`}>
+                 <div key={i} className={`flex ${msg.fromId === 'Support' || msg.fromId === 'Admin' ? 'justify-end' : 'justify-start'}`}>
+                    <div className={`p-4 rounded-2xl max-w-[85%] shadow-md ${msg.fromId === 'Support' || msg.fromId === 'Admin' ? 'bg-yellow-400 text-black rounded-tr-none' : 'bg-zinc-800 text-white border border-zinc-700 rounded-tl-none'}`}>
                        <p className="text-sm font-bold leading-relaxed">{msg.text}</p>
-                       <span className="text-[8px] opacity-50 block mt-1">{new Date(msg.date).toLocaleTimeString()}</span>
+                       <span className="text-[8px] opacity-50 block mt-1 text-left" dir="ltr">{safeTime(msg.date)}</span>
                     </div>
                  </div>
                ))}
